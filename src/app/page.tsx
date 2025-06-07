@@ -1,3 +1,9 @@
+import Navbar from "@/components/global/layout/Navbar";
+
 export default function Home() {
-  return <div className="text-secondary text-4xl">Hello</div>;
+  return (
+    <main>
+      <Navbar />
+    </main>
+  );
 }

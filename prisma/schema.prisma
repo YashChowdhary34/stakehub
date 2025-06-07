@@ -1,0 +1,195 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ClaimStatus {
+  UNCLAIMED
+  PENDING
+  APPROVED
+}
+
+model User {
+  // Primary & Identity
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String             //@unique
+  clerkId        String             @unique
+
+  // Profile
+  firstName      String?
+  lastName       String?
+  image          String?
+
+  // Financials
+  deposit        Float?             @default(0)
+  withdrawal     Float?             @default(0)
+  profit         Float?             @default(0)
+
+  // Affiliate
+  affiliateCode  String?            @default(dbgenerated("gen_random_uuid()")) @db.Uuid @unique
+  referralsMade  Referral[]         @relation("ReferralsByUser")
+  referralGot    Referral?          @relation("ReferredByUser")
+
+  // Workspace & Pocket Claims
+  workspace      WorkSpace?
+
+  // chat
+  chatsAsUser    Chat[]     @relation("UserChats")
+  chatAsAdmin    Chat[]     @relation("AdminChats")
+  messagesSent   Message[]  @relation("MessagesSender")
+
+  // Notifications
+  notifications     Notification[]
+
+  // Admin actions
+  adminActions      AdminAction[]    @relation("AdminActions")
+  actionsOnUser     AdminAction[]    @relation("ActionsOnUser")
+
+  // Role & Timestamps
+  role            Role               @default(USER)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model Referral {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code         String               //affiliate code of the referring user
+
+  // Who sent the referral (many-per-user)
+  referrer     User     @relation("ReferralsByUser", fields: [referrerId], references: [id])
+  referrerId   String   @db.Uuid
+
+  // Who received it (optional, one-per-user)
+  referred     User?    @relation("ReferredByUser", fields: [referredId], references: [id])
+  referredId   String?  @unique @db.Uuid
+
+  createdAt    DateTime @default(now())
+}
+
+model WorkSpace {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Owner
+  User                       User?                @relation(fields: [userId], references: [id])
+  userId                     String?              @unique @db.Uuid
+
+  // Affiliate metrics
+  totalAffiliateEarnings     Float               @default(0)
+  totalReferredUsers         Int                 @default(0)
+  totalReferredDeposit       Float               @default(0)
+  totalReferredWithdrawal    Float               @default(0)
+
+  // Pocket money workflow
+  hasClaimedPocketMoney      Boolean             @default(false)
+  claimedPocketSteps         Int                 @default(0)
+  pocketMoneyClaims        PocketMoneyClaim[]
+}
+
+model PocketMoneyClaim {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Which workspace it belongs to
+  workspace    WorkSpace    @relation(fields: [workspaceId], references: [id])
+  workspaceId  String       @db.Uuid
+
+  step         Int          @default(1)
+  status       ClaimStatus  @default(UNCLAIMED)
+
+  requestedAt  DateTime     @default(now())
+  reviewETA    DateTime?
+  processedAt  DateTime?
+  paymentDetails Json?
+}
+
+model Chat {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // the "client" (regular user) side of this chat
+  user        User      @relation("UserChats", fields: [userId], references: [id])
+  userId      String    @db.Uuid
+
+  admin       User      @relation("AdminChats", fields: [adminId], references: [id])
+  adminId     String    @db.Uuid
+
+  createdAt   DateTime  @default(now())
+
+  // all message in this conversation
+  messages    Message[]   @relation("ChatMessages")
+
+  // wip: track unread messages for admin and user
+
+
+  @@unique([userId, adminId]) // ensures one chat per user+admin pair
+}
+
+model Message {
+  id      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  chat    Chat      @relation("ChatMessages", fields: [chatId], references: [id])
+  chatId  String    @db.Uuid
+
+  // user who sent this message could be client or admin
+  sender        User      @relation("MessagesSender", fields: [senderId], references: [id])
+  senderId      String    @db.Uuid
+
+  type      String      // text/file
+  content   String?    
+  fileUrl   String?
+
+  createdAt   DateTime  @default(now())
+
+  // read receipt
+  readAt      DateTime?
+
+}
+
+model Notification {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @db.Uuid
+
+  type      String
+  payload   Json
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+}
+
+// wip:
+model AdminAction {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Which admin performed it
+  admin        User         @relation("AdminActions", fields: [adminId], references: [id])
+  adminId      String       @db.Uuid
+
+  // On which user (optional)
+  targetUser   User?        @relation("ActionsOnUser", fields: [targetUserId], references: [id])
+  targetUserId String?      @db.Uuid
+
+  actionType   String       // e.g. "ADJUST_FUNDS", "CHANGE_CLAIM_STATUS"
+  metadata     Json?
+
+  createdAt    DateTime     @default(now())
+}
+
