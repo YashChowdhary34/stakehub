@@ -1,0 +1,49 @@
+"use server";
+
+import client from "@/lib/prisma";
+import { currentUser } from "@clerk/nextjs/server";
+
+export const onAuthenticateAdmin = async () => {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return { status: 404, message: "User not authenticated", isAdmin: false };
+    }
+
+    // Check if user exists in the database
+    const userExists = await client.user.findUnique({
+      where: {
+        clerkId: user.id,
+      },
+      select: {
+        role: true,
+        workspace: true,
+      },
+    });
+    if (userExists) {
+      if (userExists.role === "ADMIN") {
+        return {
+          status: 200,
+          message: "Admin found in database",
+          user: userExists,
+          isAdmin: true,
+        };
+      } else {
+        return {
+          status: 200,
+          message: "User found in database",
+          user: userExists,
+          isAdmin: false,
+        };
+      }
+    }
+
+    return {
+      status: 404,
+      message: "User not found",
+      isAdmin: false,
+    };
+  } catch (error) {
+    return { status: 500, message: error, isAdmin: false };
+  }
+};

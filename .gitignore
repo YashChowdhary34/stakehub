@@ -40,5 +40,5 @@ next-env.d.ts
 src/generated/**/*
 
 # test
-./app/test/**/*
+src/app/test/**/*
 

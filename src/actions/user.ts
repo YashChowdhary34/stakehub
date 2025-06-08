@@ -54,7 +54,7 @@ export const getSession = async () => {
   try {
     const user = await currentUser();
     if (!user) {
-      return { status: 404, message: "User not authenticated" };
+      return { status: 404, message: "User not authenticated", user: null };
     }
     const userSession = await client.user.findUnique({
       where: {
@@ -67,7 +67,7 @@ export const getSession = async () => {
     });
 
     if (!userSession) {
-      return { status: 403, message: "Couldn't get userSession" };
+      return { status: 403, message: "Couldn't get userSession", user: null };
     }
     return {
       status: 200,
@@ -78,6 +78,7 @@ export const getSession = async () => {
     return {
       status: 500,
       message: error,
+      user: null,
     };
   }
 };
