@@ -126,7 +126,7 @@ model PocketMoneyClaim {
 model Chat {
   id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  // the "client" (regular user) side of this chat
+  // The "client" (regular user) side of this chat
   user        User      @relation("UserChats", fields: [userId], references: [id])
   userId      String    @db.Uuid
 
@@ -135,10 +135,10 @@ model Chat {
 
   createdAt   DateTime  @default(now())
 
-  // all message in this conversation
+  // All message in this conversation
   messages    Message[]   @relation("ChatMessages")
 
-  // wip: track unread messages for admin and user
+  // WIP: track unread messages for admin and user
 
 
   @@unique([userId, adminId]) // ensures one chat per user+admin pair
@@ -150,7 +150,7 @@ model Message {
   chat    Chat      @relation("ChatMessages", fields: [chatId], references: [id])
   chatId  String    @db.Uuid
 
-  // user who sent this message could be client or admin
+  // User who sent this message could be client or admin
   sender        User      @relation("MessagesSender", fields: [senderId], references: [id])
   senderId      String    @db.Uuid
 
@@ -160,7 +160,7 @@ model Message {
 
   createdAt   DateTime  @default(now())
 
-  // read receipt
+  // Read receipt
   readAt      DateTime?
 
 }

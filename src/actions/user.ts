@@ -10,7 +10,7 @@ export const onAuthenticateUser = async () => {
       return { status: 404, message: "User not authenticated", user: null };
     }
 
-    //check if user exists in the database
+    // Check if user exists in the database
     const userExists = await client.user.findUnique({
       where: {
         clerkId: user.id,
@@ -27,7 +27,7 @@ export const onAuthenticateUser = async () => {
       };
     }
 
-    //if user does not exist, create a new user
+    // If user does not exist, create a new user
     const newUser = await client.user.create({
       data: {
         clerkId: user.id,
