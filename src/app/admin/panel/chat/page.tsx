@@ -44,7 +44,7 @@ type Props = {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function AdminChat({ adminId }: Props) {
+export function AdminChat({ adminId }: Props) {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [textInput, setTextInput] = useState("");
   const [fileInput, setFileInput] = useState<File | null>(null);
