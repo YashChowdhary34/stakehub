@@ -1,19 +1,14 @@
-import { getReferralsCount } from "@/actions/affiliate";
-import InvalidReferralPage from "@/components/global/bad-request/InvalidReferralPage";
 import React from "react";
-import AffiliateDashboard from "./page";
 
-const Layout = async () => {
-  const referralsCount = await getReferralsCount();
-  if (referralsCount.status !== 200) {
-    <InvalidReferralPage
-      message={referralsCount.message ? referralsCount.message : ""}
-    />;
-  }
-  console.log(referralsCount.referralsMadeCount);
-  return (
-    <AffiliateDashboard referralsCount={referralsCount.referralsMadeCount} />
-  );
+type Props = {
+  children: React.ReactNode;
 };
 
+const Layout = ({ children }: Props) => {
+  return (
+    <div className="container min-w-full h-screen flex justify-center items-center">
+      {children}
+    </div>
+  );
+};
 export default Layout;
