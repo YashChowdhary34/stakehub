@@ -165,6 +165,7 @@ const Chat = () => {
   // Send file
   const sendFile = async () => {
     if (!fileInput) return;
+    console.log("this is running ---------222");
 
     const fileName = fileInput.name;
     const fileType = fileInput.type;
@@ -179,11 +180,18 @@ const Chat = () => {
       console.error("Presign failed:", await presignRes.json());
       return;
     }
-
+    console.log("this is running ---------111");
     const { uploadUrl, publicUrl } = (await presignRes.json()) as {
       uploadUrl: string;
       publicUrl: string;
     };
+
+    console.log(
+      "this is coming from /dashboard/[workspacId]/chat/page.tsx - upload Url -> ",
+      uploadUrl,
+      "publicUrl ->",
+      publicUrl
+    );
 
     const uploadResponse = await fetch(uploadUrl, {
       method: "PUT",

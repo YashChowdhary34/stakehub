@@ -1,10 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuth, UserButton } from "@clerk/nextjs";
-import { Menu } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,38 +23,36 @@ const Navbar = () => {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 max-w-screen-2xl items-center">
-        {/* Logo */}
-        <Link
-          href="/"
-          className="mr-6 flex items-center space-x-2 transition-transform hover:scale-105"
-        >
-          <Image src="/logo.png" alt="Logo" width={32} height={32} />
-        </Link>
+    <section className="w-full sticky top-0 z-50 bg-zinc-950 backdrop-blur-sm">
+      <div className="container mx-auto px-4 py-4">
+        <nav className="flex items-center justify-between">
+          {/* Logo */}
+          <Link
+            href={"/"}
+            className="text-2xl font-bold transform transition-transform hover:scale-105 "
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <Image src={"/logo.png"} alt="Logo" width={50} height={50} />
+          </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="flex items-center space-x-6 text-sm font-medium">
-          {navItems.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "transition-colors hover:text-foreground/80",
-                pathname === item.href
-                  ? "text-foreground"
-                  : "text-foreground/60"
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
-        </nav>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "text-gray-300 hover:text-white transition-colors duration-200 relative group",
+                  pathname === item.href && "text-white"
+                )}
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
 
-        {/* Spacer */}
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          {/* Desktop Auth */}
-          <div className="hidden md:flex items-center space-x-2">
+          {/* Auth Button or User Profile */}
+          <div className="hidden md:block">
             {isSignedIn ? (
               <UserButton afterSignOutUrl="/" />
             ) : (
@@ -66,65 +63,61 @@ const Navbar = () => {
           </div>
 
           {/* Mobile Navigation */}
-          <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <SheetTrigger asChild>
+          <div className="flex items-center md:hidden ">
+            {/* Auth Button on Mobile */}
+            {isSignedIn ? (
+              <span className="mr-4 mt-1">
+                <UserButton afterSignOutUrl="/" />
+              </span>
+            ) : (
               <Button
-                variant="ghost"
-                className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
+                onClick={() => router.push("/auth/sign-up")}
+                className="mr-4"
               >
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
+                Get Started
               </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="pr-0">
-              <Link
-                href="/"
-                className="flex items-center"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Image src="/logo.png" alt="Logo" width={24} height={24} />
-              </Link>
-              <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-                <div className="flex flex-col space-y-3">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setIsMenuOpen(false)}
-                      className={cn(
-                        "transition-colors hover:text-foreground/80",
-                        pathname === item.href
-                          ? "text-foreground"
-                          : "text-foreground/60"
-                      )}
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
+            )}
 
-                  {/* Mobile Auth */}
-                  <div className="flex flex-col space-y-3 pt-6 border-t">
-                    {isSignedIn ? (
-                      <UserButton afterSignOutUrl="/" />
-                    ) : (
-                      <Button
-                        onClick={() => {
-                          router.push("/auth/sign-up");
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-fit"
-                      >
-                        Get Started
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle menu"
+              className="text-white focus:outline-none"
+            >
+              {isMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      {/* Mobile Menu Dropdown */}
+      <div
+        className={cn(
+          "md:hidden overflow-hidden transition-all duration-300 ease-in-out p-4",
+          isMenuOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+        )}
+      >
+        <div className="flex flex-col items-center space-y-4 py-2 border-zinc-800 border-2 rounded-xl backdrop-blur-lg">
+          {navItems.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              onClick={() => setIsMenuOpen(false)}
+              className={cn(
+                "text-gray-300 hover:text-white transition-colors duration-200 relative group",
+                pathname === item.href && "text-white"
+              )}
+            >
+              {item.name}
+            </Link>
+          ))}
         </div>
       </div>
-    </header>
+    </section>
   );
 };
 

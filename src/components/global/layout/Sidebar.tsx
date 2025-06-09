@@ -1,8 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import { UserButton, useUser } from "@clerk/nextjs";
 import {
   House,
@@ -12,6 +10,7 @@ import {
   PiggyBank,
   Settings,
   SquareArrowUpRight,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -76,151 +75,248 @@ type Props = {
   workspaceId: string;
 };
 
-const SidebarContent = ({
-  workspaceId,
-  onItemClick,
-}: {
-  workspaceId: string;
-  onItemClick?: () => void;
-}) => {
+const Sidebar = ({ workspaceId }: Props) => {
   const pathname = usePathname();
+  console.log("pathname:", pathname);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user } = useUser();
   const router = useRouter();
-
   const handleNavigation = (href: string) => {
     router.replace(`/dashboard/${workspaceId}/${href}`);
-    onItemClick?.();
   };
 
   return (
-    <div className="flex h-full flex-col">
-      {/* User Profile */}
-      <div className="flex h-16 items-center border-b px-6">
-        <Link
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            handleNavigation("");
-          }}
-          className="flex items-center"
-        >
-          <div className="flex h-8 w-8 items-center justify-center">
-            <UserButton />
-          </div>
-          <span className="ml-2 text-lg font-semibold">{user?.firstName}</span>
-        </Link>
-      </div>
-
-      {/* Navigation */}
-      <ScrollArea className="flex-1 px-3">
-        <div className="space-y-4 py-4">
-          {/* Main Menu */}
-          <div className="px-3 py-2">
-            <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-              Main Menu
-            </h2>
-            <div className="space-y-1">
-              {mainNavItems.map((item) => (
-                <Button
-                  key={item.href}
-                  variant={
-                    pathname === `/dashboard/${workspaceId}/${item.href}`
-                      ? "secondary"
-                      : "ghost"
-                  }
-                  className="w-full justify-start"
-                  onClick={() => handleNavigation(item.href)}
-                >
-                  <item.icon className="mr-2 h-4 w-4" />
-                  {item.title}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Finances */}
-          <div className="px-3 py-2">
-            <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-              Finances
-            </h2>
-            <div className="space-y-1">
-              {teamNavItems.map((item) => (
-                <Button
-                  key={item.href}
-                  variant={
-                    pathname === `/dashboard/${workspaceId}/${item.href}`
-                      ? "secondary"
-                      : "ghost"
-                  }
-                  className="w-full justify-start"
-                  onClick={() => handleNavigation(item.href)}
-                >
-                  <item.icon className="mr-2 h-4 w-4" />
-                  {item.title}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </ScrollArea>
-
-      {/* Bottom Utility Links */}
-      <div className="border-t p-4">
-        <div className="space-y-1">
-          {utilityNavItems.map((item) => (
-            <Button
-              key={item.href}
-              variant={
-                pathname === `/dashboard/${workspaceId}/${item.href}`
-                  ? "secondary"
-                  : "ghost"
-              }
-              className="w-full justify-start"
-              onClick={() => handleNavigation(item.href)}
-            >
-              <item.icon className="mr-2 h-4 w-4" />
-              {item.title}
-            </Button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Sidebar = ({ workspaceId }: Props) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user } = useUser();
-
-  return (
     <>
-      {/* Mobile Header */}
-      <div className="flex h-16 items-center justify-between border-b px-4 md:hidden">
+      {/* Mobile Menu Toggle */}
+      <div className="fixed top-0 left-0 z-40 flex h-16 w-full items-center justify-between border-b border-zinc-700 bg-zinc-800 px-4 md:hidden">
         <div className="flex items-center">
-          <div className="flex h-8 w-8 items-center justify-center">
-            <UserButton />
-          </div>
-          <span className="ml-2 text-lg font-semibold">{user?.firstName}</span>
+          <Link
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              handleNavigation("");
+            }}
+            className="flex items-center"
+          >
+            <div className="flex h-8 w-8 items-center justify-center">
+              <UserButton />
+            </div>
+            <span className="ml-2 text-lg font-extrabold tracking-wide">
+              {user?.firstName}
+            </span>
+          </Link>
         </div>
-        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle navigation menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
-            <SidebarContent
-              workspaceId={workspaceId}
-              onItemClick={() => setIsMobileMenuOpen(false)}
-            />
-          </SheetContent>
-        </Sheet>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="rounded-md p-2 text-white hover:bg-zinc-900"
+        >
+          {isMobileMenuOpen ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Menu className="h-6 w-6" />
+          )}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      <div
+        className={cn(
+          "fixed inset-0 right-0 z-30 transform bg-zinc-800 transition-transform duration-300 ease-in-out md:hidden",
+          isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        <div className="mt-16 h-[calc(100vh-4rem)] overflow-y-auto pb-20">
+          <div className="px-4 py-6">
+            <nav className="space-y-6">
+              <div>
+                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white">
+                  Main Menu
+                </p>
+                <div className="space-y-1">
+                  {mainNavItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleNavigation(item.href);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                        pathname === `/dashboard/${workspaceId}/${item.href}`
+                          ? "bg-gray-200 text-gray-900"
+                          : "text-white/70 hover:bg-white hover:text-gray-900"
+                      )}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white">
+                  Finances
+                </p>
+                <div className="space-y-1">
+                  {teamNavItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleNavigation(item.href);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                        pathname === `/dashboard/${workspaceId}/${item.href}`
+                          ? "bg-gray-200 text-gray-900"
+                          : "text-white/70 hover:bg-white hover:text-gray-900"
+                      )}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                {utilityNavItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNavigation(item.href);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={cn(
+                      "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                      pathname === `/dashboard/${workspaceId}/${item.href}`
+                        ? "bg-gray-200 text-gray-900"
+                        : "text-white/80 hover:bg-white hover:text-gray-900"
+                    )}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.title}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+          </div>
+        </div>
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="hidden w-64 border-r bg-card md:block">
-        <SidebarContent workspaceId={workspaceId} />
+      <div className="hidden h-screen w-64 flex-shrink-0 border-r border-zinc-700 bg-zinc-800 md:block">
+        <div className="flex h-full flex-col">
+          {/* Logo */}
+          <div className="flex h-16 items-center border-b border-zinc-700 px-6">
+            <Link
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                handleNavigation("");
+              }}
+              className="flex items-center"
+            >
+              <div className="flex h-8 w-8 items-center justify-center">
+                <UserButton />
+              </div>
+              <span className="ml-2 text-lg font-extrabold tracking-wide">
+                {user?.firstName}
+              </span>
+            </Link>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex flex-1 flex-col overflow-y-auto">
+            <nav className="flex-1 space-y-8 px-4 py-6">
+              <div>
+                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white">
+                  Main Menu
+                </p>
+                <div className="space-y-1">
+                  {mainNavItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleNavigation(item.href);
+                      }}
+                      className={cn(
+                        "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                        pathname === `/dashboard/${workspaceId}/${item.href}`
+                          ? "bg-gray-200 text-gray-900"
+                          : "text-white/70 hover:bg-white hover:text-gray-900"
+                      )}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white">
+                  Finances
+                </p>
+                <div className="space-y-1">
+                  {teamNavItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleNavigation(item.href);
+                      }}
+                      className={cn(
+                        "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                        pathname === `/dashboard/${workspaceId}/${item.href}`
+                          ? "bg-gray-200 text-gray-900"
+                          : "text-white/70 hover:bg-white hover:text-gray-900"
+                      )}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </nav>
+
+            {/* Bottom Utility Links */}
+            <div className="border-t border-zinc-700 px-4 py-4">
+              <div className="space-y-1">
+                {utilityNavItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNavigation(item.href);
+                    }}
+                    className={cn(
+                      "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                      pathname === `/dashboard/${workspaceId}/${item.href}`
+                        ? "bg-gray-200 text-gray-900"
+                        : "text-white/80 hover:bg-white hover:text-gray-900"
+                    )}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
