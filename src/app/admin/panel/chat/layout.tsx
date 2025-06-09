@@ -1,7 +1,7 @@
 import { getSession } from "@/actions/user";
 import CenteredErrorMessage from "@/components/global/bad-request/centeredErrorMessage";
 import React from "react";
-import AdminChat from "./page";
+import AdminChat from "./AdminChat";
 
 const Layout = async () => {
   const session = await getSession();
