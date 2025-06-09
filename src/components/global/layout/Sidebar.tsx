@@ -88,7 +88,7 @@ const Sidebar = ({ workspaceId }: Props) => {
   return (
     <>
       {/* Mobile Menu Toggle */}
-      <div className="fixed top-0 left-0 z-40 flex h-16 w-full items-center justify-between border-b border-zinc-700 bg-zinc-800 px-4 md:hidden">
+      <div className="fixed top-0 left-0 z-40 flex h-16 w-full items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 md:hidden">
         <div className="flex items-center">
           <Link
             href="/"
@@ -101,14 +101,14 @@ const Sidebar = ({ workspaceId }: Props) => {
             <div className="flex h-8 w-8 items-center justify-center">
               <UserButton />
             </div>
-            <span className="ml-2 text-lg font-extrabold tracking-wide">
+            <span className="ml-2 text-lg font-bold tracking-wide">
               {user?.firstName}
             </span>
           </Link>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="rounded-md p-2 text-white hover:bg-zinc-900"
+          className="rounded-md p-2 text-white hover:bg-black"
         >
           {isMobileMenuOpen ? (
             <X className="h-6 w-6" />
@@ -121,15 +121,15 @@ const Sidebar = ({ workspaceId }: Props) => {
       {/* Mobile Menu */}
       <div
         className={cn(
-          "fixed inset-0 right-0 z-30 transform bg-zinc-800 transition-transform duration-300 ease-in-out md:hidden",
-          isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+          "fixed inset-0 left-0 z-30 w-3/5 transform bg-zinc-900 transition-transform duration-300 ease-in-out md:hidden",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="mt-16 h-[calc(100vh-4rem)] overflow-y-auto pb-20">
           <div className="px-4 py-6">
             <nav className="space-y-6">
               <div>
-                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white">
+                <p className="mb-2 px-2 text-base font-semibold uppercase tracking-wider text-white">
                   Main Menu
                 </p>
                 <div className="space-y-1">
@@ -145,8 +145,8 @@ const Sidebar = ({ workspaceId }: Props) => {
                       className={cn(
                         "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
                         pathname === `/dashboard/${workspaceId}/${item.href}`
-                          ? "bg-gray-200 text-gray-900"
-                          : "text-white/70 hover:bg-white hover:text-gray-900"
+                          ? "bg-gray-300 text-gray-900"
+                          : "text-white/75 hover:bg-white hover:text-black"
                       )}
                     >
                       <item.icon className="mr-3 h-5 w-5" />
@@ -157,7 +157,7 @@ const Sidebar = ({ workspaceId }: Props) => {
               </div>
 
               <div>
-                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white">
+                <p className="mb-2 px-2 text-base font-semibold uppercase tracking-wider text-white">
                   Finances
                 </p>
                 <div className="space-y-1">
@@ -173,8 +173,8 @@ const Sidebar = ({ workspaceId }: Props) => {
                       className={cn(
                         "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
                         pathname === `/dashboard/${workspaceId}/${item.href}`
-                          ? "bg-gray-200 text-gray-900"
-                          : "text-white/70 hover:bg-white hover:text-gray-900"
+                          ? "bg-gray-300 text-gray-900"
+                          : "text-white/75 hover:bg-white hover:text-black"
                       )}
                     >
                       <item.icon className="mr-3 h-5 w-5" />
@@ -197,8 +197,8 @@ const Sidebar = ({ workspaceId }: Props) => {
                     className={cn(
                       "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
                       pathname === `/dashboard/${workspaceId}/${item.href}`
-                        ? "bg-gray-200 text-gray-900"
-                        : "text-white/80 hover:bg-white hover:text-gray-900"
+                        ? "bg-gray-300 text-gray-900"
+                        : "text-white/75 hover:bg-white hover:text-black"
                     )}
                   >
                     <item.icon className="mr-3 h-5 w-5" />
@@ -212,10 +212,10 @@ const Sidebar = ({ workspaceId }: Props) => {
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="hidden h-screen w-64 flex-shrink-0 border-r border-zinc-700 bg-zinc-800 md:block">
+      <div className="hidden h-screen w-64 flex-shrink-0 border-r border-zinc-800 bg-zinc-900 md:block">
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 items-center border-b border-zinc-700 px-6">
+          <div className="flex h-16 items-center border-b border-zinc-800 px-6">
             <Link
               href="/"
               onClick={(e) => {
@@ -227,7 +227,7 @@ const Sidebar = ({ workspaceId }: Props) => {
               <div className="flex h-8 w-8 items-center justify-center">
                 <UserButton />
               </div>
-              <span className="ml-2 text-lg font-extrabold tracking-wide">
+              <span className="ml-2 text-lg font-bold tracking-wide">
                 {user?.firstName}
               </span>
             </Link>
@@ -237,7 +237,7 @@ const Sidebar = ({ workspaceId }: Props) => {
           <div className="flex flex-1 flex-col overflow-y-auto">
             <nav className="flex-1 space-y-8 px-4 py-6">
               <div>
-                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white">
+                <p className="mb-2 px-2 text-base font-bold uppercase tracking-wider text-white">
                   Main Menu
                 </p>
                 <div className="space-y-1">
@@ -252,8 +252,8 @@ const Sidebar = ({ workspaceId }: Props) => {
                       className={cn(
                         "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
                         pathname === `/dashboard/${workspaceId}/${item.href}`
-                          ? "bg-gray-200 text-gray-900"
-                          : "text-white/70 hover:bg-white hover:text-gray-900"
+                          ? "bg-gray-300 text-zinc-900"
+                          : "text-white/75 hover:bg-white hover:text-black"
                       )}
                     >
                       <item.icon className="mr-3 h-5 w-5" />
@@ -264,7 +264,7 @@ const Sidebar = ({ workspaceId }: Props) => {
               </div>
 
               <div>
-                <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white">
+                <p className="mb-2 px-2 text-base font-semibold uppercase tracking-wider text-white">
                   Finances
                 </p>
                 <div className="space-y-1">
@@ -279,8 +279,8 @@ const Sidebar = ({ workspaceId }: Props) => {
                       className={cn(
                         "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
                         pathname === `/dashboard/${workspaceId}/${item.href}`
-                          ? "bg-gray-200 text-gray-900"
-                          : "text-white/70 hover:bg-white hover:text-gray-900"
+                          ? "bg-gray-300 text-zinc-900"
+                          : "text-white/75 hover:bg-white hover:text-black"
                       )}
                     >
                       <item.icon className="mr-3 h-5 w-5" />
@@ -292,7 +292,7 @@ const Sidebar = ({ workspaceId }: Props) => {
             </nav>
 
             {/* Bottom Utility Links */}
-            <div className="border-t border-zinc-700 px-4 py-4">
+            <div className="border-t border-zinc-800 px-4 py-4">
               <div className="space-y-1">
                 {utilityNavItems.map((item) => (
                   <Link
@@ -305,8 +305,8 @@ const Sidebar = ({ workspaceId }: Props) => {
                     className={cn(
                       "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
                       pathname === `/dashboard/${workspaceId}/${item.href}`
-                        ? "bg-gray-200 text-gray-900"
-                        : "text-white/80 hover:bg-white hover:text-gray-900"
+                        ? "bg-gray-300 text-gray-900"
+                        : "text-white/75 hover:bg-white hover:text-black"
                     )}
                   >
                     <item.icon className="mr-3 h-5 w-5" />

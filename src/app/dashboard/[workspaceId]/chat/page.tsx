@@ -15,8 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Spinner from "@/components/global/loader/spinner";
 
-type Chat = {
+type UserChat = {
   id: string;
 };
 
@@ -29,15 +30,14 @@ type Message = {
   createdAt: string;
 };
 
-declare global {
-  interface Window {
-    __USER_ID__?: string;
-  }
-}
+type Props = {
+  userId: string;
+  eta: string;
+};
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-const Chat = () => {
+const UserChat = ({ userId, eta }: Props) => {
   const [chatId, setChatId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [textInput, setTextInput] = useState("");
@@ -95,7 +95,7 @@ const Chat = () => {
       <main className="fixed top-0 left-0 w-full h-screen md:ml-64 md:w-[calc(100%-16rem)] bg-background">
         <div className="flex h-full items-center justify-center mt-16 md:mt-0">
           <div className="flex flex-col items-center space-y-4">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <Spinner />
             <p className="text-sm text-muted-foreground">
               Initializing chat...
             </p>
@@ -140,7 +140,7 @@ const Chat = () => {
   const messages: Message[] = messagesData?.messages || [];
 
   // WIP:Do something about this
-  const currentUserId = window.__USER_ID__ as string;
+  const currentUserId = userId;
 
   // Send text message
   const sendText = async () => {
@@ -230,19 +230,24 @@ const Chat = () => {
 
   return (
     <main className="fixed top-0 left-0 w-full h-screen md:ml-64 md:w-[calc(100%-16rem)] bg-background">
-      <div className="flex h-full flex-col mt-16 md:mt-0">
+      <div className="flex h-full flex-col pt-16 md:pt-0">
         {/*header*/}
-        <div className="border-b bg-card px-4 py-3 md:px-6 flex-shrink-0">
-          <div className="flex items-center justify-start gap-6">
-            <div className="flex h-4 w-4 rounded-full bg-green-500"></div>
-            <div>
-              <h1 className="text-lg font-semibold md:text-xl text-card-foreground">
-                Chat with Admin
-              </h1>
-              <p className="text-xs text-muted-foreground md:text-sm">
-                {messages.length} messages
-              </p>
+        <div className="border-b bg-zinc-800 px-4 py-3 md:px-6 flex-shrink-0">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center justify-start gap-6">
+              <div className="flex h-3 w-3 rounded-full bg-green-500"></div>
+              <div className="flex flex-col items-start justify-start">
+                <h1 className="text-lg font-semibold md:text-lg text-card-foreground">
+                  Chat with Admin
+                </h1>
+                <p className="text-xs text-muted-foreground md:text-sm">
+                  {messages.length} messages
+                </p>
+              </div>
             </div>
+            <span className="text-muted-foreground text-xs font-bold">
+              Expected Reply Time {eta}
+            </span>
           </div>
         </div>
 
@@ -280,7 +285,7 @@ const Chat = () => {
                           "max-w-[85%] md:max-w-[70%] border-0",
                           isMine
                             ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
+                            : "bg-zinc-800 text-white"
                         )}
                       >
                         <CardContent className="px-4 py-2">
@@ -392,7 +397,7 @@ const Chat = () => {
             </Button>
           </div>
 
-          <div className="mt-2 text-xs text-muted-foreground">
+          <div className="mt-2 text-xs text-muted-foreground hidden md:flex">
             Press Enter to send, Shift+Enter for new line
           </div>
         </div>
@@ -401,4 +406,4 @@ const Chat = () => {
   );
 };
 
-export default Chat;
+export default UserChat;

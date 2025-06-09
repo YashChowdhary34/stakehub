@@ -38,15 +38,13 @@ type Message = {
   createdAt: string;
 };
 
-declare global {
-  interface Window {
-    __ADMIN_ID__?: string;
-  }
-}
+type Props = {
+  adminId: string;
+};
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function AdminChatPage() {
+export default function AdminChat({ adminId }: Props) {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [textInput, setTextInput] = useState("");
   const [fileInput, setFileInput] = useState<File | null>(null);
@@ -301,7 +299,6 @@ export default function AdminChatPage() {
                     <div className="space-y-4 pb-4">
                       {messages.map((msg) => {
                         // WIP:Do something about this
-                        const adminId = window.__ADMIN_ID__ as string;
                         const isAdminSender = msg.senderId === adminId;
 
                         return (

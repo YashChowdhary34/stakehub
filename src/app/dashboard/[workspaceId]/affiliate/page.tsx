@@ -28,20 +28,22 @@ const Affiliate = async () => {
       <div>
         <Toaster position="bottom-right" reverseOrder={false} />
       </div>
-      <div className="min-h-screen flex items-start p-6">
-        <Card className="w-full max-w-md bg-zinc-800 border-zinc-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xl font-bold">
-              Your Affiliate Link
-            </CardTitle>
-            <CardDescription className="text-zinc-400">
-              Create and share your invitation link
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <CardContentSection userAffiliateLink={userAffiliateLink} />
-          </CardContent>
-        </Card>
+      <div className="flex flex-col items-start justify-center p-4">
+        <div className="flex items-start p-2">
+          <Card className="w-full max-w-md bg-zinc-800 border-zinc-700">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-bold tracking-wide">
+                Your Affiliate Link
+              </CardTitle>
+              <CardDescription className="text-zinc-400">
+                Create and share your invitation link
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <CardContentSection userAffiliateLink={userAffiliateLink} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </main>
   );

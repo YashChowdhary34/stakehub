@@ -9,7 +9,7 @@ const Page = async () => {
     return <CenteredErrorMessage message="You are not an admin!" />;
   }
 
-  redirect("/admin/dashboard/chat");
+  redirect("/admin/panel/chat");
 
   return (
     <div className="container min-w-full h-screen flex justify-center items-center">

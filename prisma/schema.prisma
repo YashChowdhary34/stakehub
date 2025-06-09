@@ -46,6 +46,7 @@ model User {
   deposit        Float?             @default(0)
   withdrawal     Float?             @default(0)
   profit         Float?             @default(0)
+  transactions   Transaction[]
 
   // Affiliate
   affiliateCode  String?            @default(dbgenerated("gen_random_uuid()")) @db.Uuid @unique
@@ -71,6 +72,25 @@ model User {
   role            Role               @default(USER)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
+
+  // Platforms
+  platform        Platform[]
+}
+
+model Transaction{
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  User        User?   @relation(fields: [userId], references: [id])
+  userId      String?
+  userTransaction   String[]
+}
+
+model Platform {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  User        User?   @relation(fields: [userId], references: [id])
+  userId      String?
+  credentials Json?
 }
 
 model Referral {
