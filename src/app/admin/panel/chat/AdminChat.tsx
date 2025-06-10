@@ -10,9 +10,19 @@ import {
   X,
   MessageSquare,
   User,
+  Menu,
+  ArrowLeft,
+  Search,
+  MoreVertical,
+  CheckCheck,
+  MessageCircle,
+  BanknoteArrowDown,
+  BanknoteArrowUp,
+  List,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EstimatedReplyTimeSetting from "../../components/EstimatedReplyTimeSetting";
+import DepositForm from "../../components/DepositForm"; // Import the DepositForm component
 
 type ChatSummary = {
   id: string;
@@ -50,6 +60,8 @@ const AdminChat = ({ adminId }: Props) => {
   const [textInput, setTextInput] = useState("");
   const [fileInput, setFileInput] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDepositFormOpen, setIsDepositFormOpen] = useState(false); // New state for deposit form
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // 1. Fetch list of chats (Admin view)
@@ -83,11 +95,61 @@ const AdminChat = ({ adminId }: Props) => {
     }
   }, [messages]);
 
+  // Close sidebar when chat is selected on mobile
+  const handleChatSelect = (chatId: string) => {
+    setSelectedChatId(chatId);
+    setSidebarOpen(false);
+  };
+
+  // Handle back button on mobile
+  const handleBackToChats = () => {
+    setSelectedChatId(null);
+    setSidebarOpen(true);
+  };
+
   // Handle Enter key
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendText();
+    }
+  };
+
+  // Handle deposit form submission
+  const handleDepositSubmit = async (amount: number) => {
+    if (!selectedChatId) return;
+
+    try {
+      // Here you would typically make an API call to process the deposit
+      // For now, we'll just send a message to the chat
+      const response = await fetch(`/api/deposit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId: selectedChatId,
+          amount: amount,
+          userId: chatList.find((c) => c.id === selectedChatId)?.user.id,
+        }),
+      });
+
+      if (response.ok) {
+        // Send a confirmation message to the chat
+        await fetch(`/api/chat/${selectedChatId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "TEXT",
+            content: `✅ Deposit processed successfully: $${amount.toLocaleString()}`,
+          }),
+        });
+
+        // Refresh messages and chat list
+        mutateMessages();
+        mutateChats();
+      }
+    } catch (error) {
+      console.error("Error processing deposit:", error);
+      // You could show an error message here
     }
   };
 
@@ -173,289 +235,477 @@ const AdminChat = ({ adminId }: Props) => {
 
   if (chatListError) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-medium text-red-400">
-            Error loading chat list
+      <div className="fixed inset-0 top-16 bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 mx-auto">
+            <MessageSquare className="h-8 w-8 text-destructive" />
+          </div>
+          <h2 className="text-xl font-semibold text-foreground mb-2 text-red-500">
+            Connection Error
+          </h2>
+          <p className="text-muted-foreground mb-4">
+            Unable to load chat conversations. Please check your connection and
+            try again.
           </p>
-          <p className="text-sm text-gray-400">
-            Please try refreshing the page
-          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Refresh Page
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full">
-      <div className="flex h-screen">
-        {/* ─── Sidebar: List of Chats ──────────────────────────── */}
-        <div className="w-80 bg-zinc-900 border-r border-zinc-700 flex flex-col">
-          <div className="p-4 border-b border-zinc-700">
-            <div className="flex items-center justify-between">
+    <div className="fixed inset-0 top-16 bg-background flex overflow-hidden">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Deposit Form Modal */}
+      <DepositForm
+        isOpen={isDepositFormOpen}
+        onClose={() => setIsDepositFormOpen(false)}
+        onSubmit={handleDepositSubmit}
+        chatId={selectedChatId || undefined}
+      />
+
+      {/* ─── Sidebar: List of Chats ──────────────────────────── */}
+      <div
+        className={cn(
+          "fixed lg:relative inset-y-0 left-0 z-50 w-full max-w-sm bg-card border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "lg:w-80"
+        )}
+      >
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-border bg-card/95 backdrop-blur-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <MessageSquare className="h-5 w-5 text-primary" />
+              </div>
               <div>
-                <h2 className="text-lg font-semibold text-white">User Chats</h2>
-                <p className="text-sm text-zinc-400">
-                  {chatList.length} conversations
+                <h1 className="text-lg font-semibold text-foreground">
+                  Admin Chat
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {chatList.length} conversation
+                  {chatList.length !== 1 ? "s" : ""}
                 </p>
               </div>
-
-              <EstimatedReplyTimeSetting />
             </div>
+            <EstimatedReplyTimeSetting />
           </div>
 
-          {/* Rest of your sidebar content remains the same */}
-          <div className="flex-1 overflow-y-auto">
-            {chatList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-center px-4">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-700">
-                  <MessageSquare className="h-6 w-6 text-zinc-400" />
-                </div>
-                <p className="text-white font-medium">No chats yet</p>
-                <p className="text-sm text-zinc-400">
-                  User conversations will appear here
-                </p>
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              className="w-full pl-10 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+        </div>
+
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto">
+          {chatList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                <MessageSquare className="h-8 w-8 text-muted-foreground" />
               </div>
-            ) : (
-              chatList.map((chat) => {
-                const lastMsg = chat.messages[0]; // most recent message
+              <h3 className="text-lg font-medium text-foreground mb-2">
+                No conversations yet
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                When users start conversations, they&apos;ll appear here for you
+                to respond to.
+              </p>
+            </div>
+          ) : (
+            <div className="py-2">
+              {chatList.map((chat) => {
+                const lastMsg = chat.messages[0];
                 const isSelected = selectedChatId === chat.id;
+                const timeAgo = lastMsg ? new Date(lastMsg.createdAt) : null;
 
                 return (
                   <div
                     key={chat.id}
-                    onClick={() => setSelectedChatId(chat.id)}
+                    onClick={() => handleChatSelect(chat.id)}
                     className={cn(
-                      "p-4 cursor-pointer border-b border-zinc-800 hover:bg-zinc-800 transition-colors",
-                      isSelected && "bg-zinc-800 border-l-4 border-l-blue-500"
+                      "px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors relative",
+                      isSelected && "bg-primary/5 border-l-4 border-l-primary"
                     )}
                   >
                     <div className="flex items-start space-x-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-700">
-                        <User className="h-5 w-5 text-zinc-300" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-white truncate">
-                          {chat.user.name || chat.user.email}
+                      <div className="relative">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
+                          <User className="h-6 w-6 text-primary" />
                         </div>
-                        <div className="text-sm text-zinc-400 truncate mt-1">
-                          {lastMsg
-                            ? lastMsg.type === "TEXT"
-                              ? lastMsg.content?.slice(0, 40) +
-                                ((lastMsg.content?.length ?? 0) > 40
+                        <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-card rounded-full"></div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="font-medium text-foreground truncate pr-2">
+                            {chat.user.name || chat.user.email.split("@")[0]}
+                          </h4>
+                          {timeAgo && (
+                            <span className="text-xs text-muted-foreground flex-shrink-0">
+                              {timeAgo.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground truncate pr-2">
+                            {lastMsg ? (
+                              lastMsg.type === "TEXT" ? (
+                                lastMsg.content?.slice(0, 35) +
+                                ((lastMsg.content?.length ?? 0) > 35
                                   ? "..."
                                   : "")
-                              : "📎 File attachment"
-                            : "No messages"}
-                        </div>
-                        <div className="text-xs text-zinc-500 mt-1">
-                          {lastMsg
-                            ? new Date(lastMsg.createdAt).toLocaleString()
-                            : ""}
+                              ) : (
+                                <span className="flex items-center">
+                                  <Paperclip className="h-3 w-3 mr-1" />
+                                  File attachment
+                                </span>
+                              )
+                            ) : (
+                              <span className="italic">No messages yet</span>
+                            )}
+                          </p>
+
+                          {lastMsg && (
+                            <div className="flex items-center space-x-1 flex-shrink-0">
+                              <CheckCheck className="h-3 w-3 text-primary" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* ─── Main Chat Window ─────────────────────────────────── */}
-        <div className="flex-1 flex flex-col bg-zinc-950">
-          {selectedChatId ? (
-            <>
-              {/* Chat Header */}
-              <div className="border-b border-zinc-700 bg-zinc-900 p-4">
+      {/* ─── Main Chat Window ─────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {selectedChatId ? (
+          <>
+            {/* Chat Header */}
+            <div className="border-b border-border bg-card/95 backdrop-blur-sm px-4 py-3">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700">
-                    <User className="h-4 w-4 text-zinc-300" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white">
-                      {chatList.find((c) => c.id === selectedChatId)?.user
-                        .name ||
-                        chatList.find((c) => c.id === selectedChatId)?.user
-                          .email}
-                    </h3>
-                    <p className="text-sm text-zinc-400">
-                      {messages.length} messages
-                    </p>
+                  <button
+                    onClick={handleBackToChats}
+                    className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+                  >
+                    <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+                  </button>
+
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="hidden lg:block xl:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+                  >
+                    <Menu className="h-5 w-5 text-muted-foreground" />
+                  </button>
+
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 border-2 border-card rounded-full"></div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold text-foreground">
+                        {chatList.find((c) => c.id === selectedChatId)?.user
+                          .name ||
+                          chatList
+                            .find((c) => c.id === selectedChatId)
+                            ?.user.email?.split("@")[0]}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {messages.length} message
+                        {messages.length !== 1 ? "s" : ""} • Online
+                      </p>
+                    </div>
                   </div>
                 </div>
+
+                <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+                  <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                </button>
               </div>
+            </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-hidden">
-                <div className="h-full overflow-y-auto p-4">
-                  {messages.length === 0 ? (
-                    <div className="flex h-full items-center justify-center">
-                      <div className="text-center">
-                        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800">
-                          <MessageSquare className="h-6 w-6 text-zinc-400" />
-                        </div>
-                        <p className="text-lg font-medium text-white">
-                          No messages yet
-                        </p>
-                        <p className="text-sm text-zinc-400">
-                          Start the conversation
-                        </p>
+            {/* Messages Area */}
+            <div className="flex-1 overflow-hidden bg-gradient-to-b from-background to-muted/20">
+              <div className="h-full overflow-y-auto">
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center p-8">
+                    <div className="text-center max-w-sm">
+                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                        <MessageSquare className="h-8 w-8 text-primary" />
                       </div>
+                      <h3 className="text-lg font-medium text-foreground mb-2">
+                        Start the conversation
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Send a message to begin chatting with this user
+                      </p>
                     </div>
-                  ) : (
-                    <div className="space-y-4 pb-4">
-                      {messages.map((msg) => {
-                        // WIP:Do something about this
-                        const isAdminSender = msg.senderId === adminId;
+                  </div>
+                ) : (
+                  <div className="px-4 py-6 space-y-4">
+                    {messages.map((msg, index) => {
+                      const isAdminSender = msg.senderId === adminId;
+                      const showTime =
+                        index === 0 ||
+                        new Date(msg.createdAt).getTime() -
+                          new Date(messages[index - 1].createdAt).getTime() >
+                          300000; // 5 minutes
 
-                        return (
+                      return (
+                        <div key={msg.id}>
+                          {showTime && (
+                            <div className="flex justify-center mb-4">
+                              <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                                {new Date(msg.createdAt).toLocaleDateString()}{" "}
+                                {new Date(msg.createdAt).toLocaleTimeString(
+                                  [],
+                                  { hour: "2-digit", minute: "2-digit" }
+                                )}
+                              </span>
+                            </div>
+                          )}
+
                           <div
-                            key={msg.id}
                             className={cn(
-                              "flex",
+                              "flex items-end space-x-2",
                               isAdminSender ? "justify-end" : "justify-start"
                             )}
                           >
+                            {!isAdminSender && (
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 flex-shrink-0">
+                                <User className="h-4 w-4 text-primary" />
+                              </div>
+                            )}
+
                             <div
                               className={cn(
-                                "max-w-[70%] rounded-2xl px-4 py-2",
+                                "max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 shadow-sm",
                                 isAdminSender
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-zinc-800 text-zinc-100"
+                                  ? "bg-primary text-primary-foreground rounded-br-md"
+                                  : "bg-card border border-border rounded-bl-md"
                               )}
                             >
                               {msg.type === "TEXT" ? (
-                                <p className="whitespace-pre-wrap break-words text-sm">
+                                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                                   {msg.content}
                                 </p>
                               ) : (
                                 <div className="flex items-center space-x-2">
-                                  <FileText className="h-4 w-4" />
-                                  <a
-                                    href={msg.fileUrl!}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center space-x-1 text-sm underline hover:no-underline"
+                                  <div
+                                    className={cn(
+                                      "p-2 rounded-lg",
+                                      isAdminSender
+                                        ? "bg-primary-foreground/10"
+                                        : "bg-muted"
+                                    )}
                                   >
-                                    <span>Download file</span>
-                                    <Download className="h-3 w-3" />
-                                  </a>
+                                    <FileText className="h-4 w-4" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <a
+                                      href={msg.fileUrl!}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center space-x-2 text-sm hover:underline"
+                                    >
+                                      <span className="truncate">
+                                        File attachment
+                                      </span>
+                                      <Download className="h-3 w-3 flex-shrink-0" />
+                                    </a>
+                                  </div>
                                 </div>
                               )}
+
                               <div
                                 className={cn(
-                                  "mt-1 text-xs opacity-70",
-                                  isAdminSender ? "text-right" : "text-left"
+                                  "flex items-center justify-end mt-1 space-x-1",
+                                  isAdminSender
+                                    ? "text-primary-foreground/70"
+                                    : "text-muted-foreground"
                                 )}
                               >
-                                {new Date(msg.createdAt).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
+                                <span className="text-xs">
+                                  {new Date(msg.createdAt).toLocaleTimeString(
+                                    [],
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  )}
+                                </span>
+                                {isAdminSender && (
+                                  <CheckCheck className="h-3 w-3" />
                                 )}
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  )}
-                </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
               </div>
+            </div>
 
-              {/* Input Area */}
-              <div className="border-t border-zinc-700 bg-zinc-900 p-4">
-                {/* File Preview */}
-                {fileInput && (
-                  <div className="mb-4 flex items-center justify-between rounded-lg bg-zinc-800 p-3">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="h-4 w-4 text-zinc-400" />
-                      <span className="text-sm font-medium text-white">
-                        {fileInput.name}
-                      </span>
-                      <span className="text-xs text-zinc-400">
-                        ({Math.round(fileInput.size / 1024)}KB)
-                      </span>
+            {/* Quick Actions Bar */}
+            <div className="border-t border-b border-border bg-card/50 p-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-400/10 hover:bg-yellow-400/20 rounded-lg transition-colors text-yellow-400">
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Templates</span>
+                </button>
+                <button
+                  onClick={() => setIsDepositFormOpen(true)}
+                  disabled={!selectedChatId}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-500/10 hover:bg-green-500/20 rounded-lg transition-colors text-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <BanknoteArrowDown className="h-4 w-4" />
+                  <span className="text-sm font-medium">Deposit</span>
+                </button>
+                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg transition-colors text-amber-600">
+                  <BanknoteArrowUp className="h-4 w-4" />
+                  <span className="text-sm font-medium">Withdraw</span>
+                </button>
+                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white">
+                  <List className="h-4 w-4" />
+                  <span className="text-sm font-medium">Transactions</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Input Area */}
+            <div className="border-t border-border bg-card/95 backdrop-blur-sm p-4">
+              {/* File Preview */}
+              {fileInput && (
+                <div className="mb-3 p-3 bg-muted rounded-lg border border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {fileInput.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round(fileInput.size / 1024)}KB
+                        </p>
+                      </div>
                     </div>
                     <button
                       onClick={() => setFileInput(null)}
-                      className="rounded-full p-1 hover:bg-zinc-700 text-zinc-400 hover:text-white"
+                      className="p-1 hover:bg-destructive/10 rounded-full text-muted-foreground hover:text-destructive transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
-                )}
+                </div>
+              )}
 
-                <div className="flex items-end space-x-2">
-                  {/* File Input */}
-                  <label className="cursor-pointer rounded-lg border border-zinc-600 bg-zinc-800 p-2 transition-colors hover:bg-zinc-700">
-                    <Paperclip className="h-4 w-4 text-zinc-300" />
-                    <input
-                      id="admin-file-input"
-                      type="file"
-                      className="hidden"
-                      onChange={(e) =>
-                        setFileInput(e.target.files?.[0] || null)
-                      }
-                    />
-                  </label>
+              <div className="flex items-end space-x-2">
+                {/* File Input */}
+                <label className="cursor-pointer p-2 hover:bg-muted rounded-lg transition-colors border border-border">
+                  <Paperclip className="h-5 w-5 text-muted-foreground" />
+                  <input
+                    id="admin-file-input"
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => setFileInput(e.target.files?.[0] || null)}
+                  />
+                </label>
 
-                  {/* Text Input */}
-                  <div className="flex-1">
-                    <textarea
-                      value={textInput}
-                      onChange={(e) => setTextInput(e.target.value)}
-                      onKeyDown={handleKeyPress}
-                      placeholder="Type a message..."
-                      className="min-h-[44px] max-h-32 w-full resize-none rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows={1}
-                    />
-                  </div>
-
-                  {/* Send Button */}
-                  <button
-                    onClick={fileInput ? sendFile : sendText}
-                    disabled={(!textInput.trim() && !fileInput) || sending}
-                    className={cn(
-                      "rounded-lg p-2 transition-colors",
-                      (!textInput.trim() && !fileInput) || sending
-                        ? "cursor-not-allowed bg-zinc-700 text-zinc-500"
-                        : "bg-blue-600 text-white hover:bg-blue-700"
-                    )}
-                  >
-                    {sending ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </button>
+                {/* Text Input */}
+                <div className="flex-1 relative">
+                  <textarea
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Type a message..."
+                    className="w-full min-h-[44px] max-h-32 resize-none rounded-lg border border-border bg-background px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                    rows={1}
+                  />
                 </div>
 
-                <div className="mt-2 text-xs text-zinc-400">
-                  Press Enter to send, Shift+Enter for new line
-                </div>
+                {/* Send Button */}
+                <button
+                  onClick={fileInput ? sendFile : sendText}
+                  disabled={(!textInput.trim() && !fileInput) || sending}
+                  className={cn(
+                    "p-2 rounded-lg transition-all duration-200 flex items-center justify-center",
+                    (!textInput.trim() && !fileInput) || sending
+                      ? "cursor-not-allowed bg-muted text-muted-foreground"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md active:scale-95"
+                  )}
+                >
+                  {sending ? (
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </button>
               </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-800">
-                  <MessageSquare className="h-8 w-8 text-zinc-400" />
-                </div>
-                <h2 className="text-xl font-semibold text-white mb-2">
-                  Select a chat
-                </h2>
-                <p className="text-zinc-400">
-                  Choose a user conversation from the sidebar to start messaging
-                </p>
+
+              <div className="mt-2 text-xs text-muted-foreground">
+                Press Enter to send • Shift+Enter for new line
               </div>
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
+                <MessageSquare className="h-10 w-10 text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                Welcome to Admin Chat
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Select a conversation from the sidebar to start messaging with
+                users. You can respond to their questions and provide support.
+              </p>
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                View Conversations
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

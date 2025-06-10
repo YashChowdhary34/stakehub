@@ -23,16 +23,21 @@ const Navbar = () => {
   ];
 
   return (
-    <section className="w-full sticky top-0 z-50 bg-zinc-950 backdrop-blur-sm">
-      <div className="container mx-auto px-4 py-4">
+    <section className="w-full sticky top-0 z-50 bg-zinc-950 backdrop-blur-sm border-b-2 max-h-16">
+      <div className="container mx-auto px-4 py-2">
         <nav className="flex items-center justify-between">
           {/* Logo */}
           <Link
             href={"/"}
-            className="text-2xl font-bold transform transition-transform hover:scale-105 "
+            className="text-2xl font-bold transform transition-transform"
             onClick={() => setIsMenuOpen(false)}
           >
-            <Image src={"/logo.png"} alt="Logo" width={50} height={50} />
+            <div className="flex">
+              <Image src={"/logo.png"} alt="Logo" width={50} height={50} />
+              <span className="absolute mt-3 ml-14 text-zinc-500 text-lg font-extrabold">
+                Admin
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}

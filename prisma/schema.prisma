@@ -43,9 +43,9 @@ model User {
   image          String?
 
   // Financials
-  deposit        Float?             @default(0)
-  withdrawal     Float?             @default(0)
-  profit         Float?             @default(0)
+  deposits        Float[]             
+  withdrawals     Float[]             
+  profit          Float?             @default(0)
   transactions   Transaction[]
 
   // Affiliate
