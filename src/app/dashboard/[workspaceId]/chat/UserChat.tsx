@@ -45,12 +45,10 @@ const UserChat = ({ userId, eta }: Props) => {
   const [fileInput, setFileInput] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  console.log("this is running 444");
 
   // Initialize Chat
   useEffect(() => {
     async function initChat() {
-      console.log("this is running88888");
       setCreating(true);
       try {
         console.log("this is running111");
@@ -171,7 +169,6 @@ const UserChat = ({ userId, eta }: Props) => {
   // Send file
   const sendFile = async () => {
     if (!fileInput) return;
-    console.log("this is running ---------222");
 
     const fileName = fileInput.name;
     const fileType = fileInput.type;
@@ -186,7 +183,6 @@ const UserChat = ({ userId, eta }: Props) => {
       console.error("Presign failed:", await presignRes.json());
       return;
     }
-    console.log("this is running ---------111");
     const { uploadUrl, publicUrl } = (await presignRes.json()) as {
       uploadUrl: string;
       publicUrl: string;
@@ -250,8 +246,8 @@ const UserChat = ({ userId, eta }: Props) => {
               </p>
             </div>
           </div>
-          <span className="text-muted-foreground text-xs font-bold">
-            Expected Reply Time {eta}
+          <span className="text-white/30 text-[0.75rem] font-bold">
+            Maximum Reply Delay - {eta}
           </span>
         </div>
       </div>

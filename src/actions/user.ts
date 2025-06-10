@@ -82,3 +82,50 @@ export const getSession = async () => {
     };
   }
 };
+
+export const getEstimatedReplyTime = async () => {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return {
+        status: 404,
+        message: "User not authenticated",
+        estimatedReplyTime: null,
+      };
+    }
+
+    // Check if user exists in the database
+    const userExists = await client.user.findUnique({
+      where: {
+        clerkId: user.id,
+      },
+      include: {
+        workspace: true,
+      },
+    });
+    if (userExists) {
+      const replyTime = await client.setting.findFirst({
+        select: {
+          estimatedReplyTime: true,
+        },
+      });
+      return {
+        status: 200,
+        message: "Successfully fetched estimated reply time",
+        estimatedReplyTime: replyTime,
+      };
+    }
+
+    return {
+      status: 401,
+      message: "User doesn't exist on the database",
+      estimatedReplyTime: null,
+    };
+  } catch (error) {
+    return {
+      status: 500,
+      message: error,
+      getEstimatedReplyTime: null,
+    };
+  }
+};

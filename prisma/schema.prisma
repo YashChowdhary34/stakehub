@@ -81,7 +81,7 @@ model Transaction{
   id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   User        User?   @relation(fields: [userId], references: [id])
-  userId      String?
+  userId      String? @db.Uuid
   userTransaction   String[]
 }
 
@@ -89,7 +89,7 @@ model Platform {
   id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   User        User?   @relation(fields: [userId], references: [id])
-  userId      String?
+  userId      String? @db.Uuid
   credentials Json?
 }
 
@@ -215,3 +215,8 @@ model AdminAction {
   createdAt    DateTime     @default(now())
 }
 
+model Setting {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  estimatedReplyTime  Float           @default(0.10) // in hours
+  updatedAt           DateTime        @default(now())
+}

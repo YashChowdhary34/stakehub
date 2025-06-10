@@ -1,4 +1,4 @@
-import { getSession } from "@/actions/user";
+import { getEstimatedReplyTime, getSession } from "@/actions/user";
 import React from "react";
 import CenteredErrorMessage from "@/components/global/bad-request/centeredErrorMessage";
 import UserChat from "./UserChat";
@@ -12,11 +12,27 @@ const UserChatPage = async () => {
       </div>
     );
   }
-  console.log("this is running 222222");
+
   const userId = session.user.id;
+
+  const expectedReplyTime = await getEstimatedReplyTime();
+  if (
+    !expectedReplyTime ||
+    expectedReplyTime.status !== 200 ||
+    !expectedReplyTime.estimatedReplyTime?.estimatedReplyTime
+  ) {
+    return (
+      <div className="flex-1 h-full overflow-hidden">
+        <UserChat userId={userId} eta="1hrs" />
+      </div>
+    );
+  }
   return (
     <div className="flex-1 h-full overflow-hidden">
-      <UserChat userId={userId} eta="1hr" />
+      <UserChat
+        userId={userId}
+        eta={`${expectedReplyTime.estimatedReplyTime?.estimatedReplyTime}hrs`}
+      />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import EstimatedReplyTimeSetting from "../../components/EstimatedReplyTimeSetting";
 
 type ChatSummary = {
   id: string;
@@ -186,17 +187,24 @@ const AdminChat = ({ adminId }: Props) => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen w-full">
       <div className="flex h-screen">
         {/* ─── Sidebar: List of Chats ──────────────────────────── */}
         <div className="w-80 bg-zinc-900 border-r border-zinc-700 flex flex-col">
           <div className="p-4 border-b border-zinc-700">
-            <h2 className="text-lg font-semibold text-white">User Chats</h2>
-            <p className="text-sm text-zinc-400">
-              {chatList.length} conversations
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-white">User Chats</h2>
+                <p className="text-sm text-zinc-400">
+                  {chatList.length} conversations
+                </p>
+              </div>
+
+              <EstimatedReplyTimeSetting />
+            </div>
           </div>
 
+          {/* Rest of your sidebar content remains the same */}
           <div className="flex-1 overflow-y-auto">
             {chatList.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center px-4">
