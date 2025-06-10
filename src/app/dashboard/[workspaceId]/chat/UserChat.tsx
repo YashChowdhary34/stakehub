@@ -235,180 +235,178 @@ const UserChat = ({ userId, eta }: Props) => {
   };
 
   return (
-    <main className="fixed top-0 left-0 w-full h-screen md:ml-64 md:w-[calc(100%-16rem)] bg-background">
-      <div className="flex h-full flex-col pt-16 md:pt-0">
-        {/*header*/}
-        <div className="border-b bg-zinc-800 px-4 py-3 md:px-6 flex-shrink-0">
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center justify-start gap-6">
-              <div className="flex h-3 w-3 rounded-full bg-green-500"></div>
-              <div className="flex flex-col items-start justify-start">
-                <h1 className="text-lg font-semibold md:text-lg text-card-foreground">
-                  Chat with Admin
-                </h1>
-                <p className="text-xs text-muted-foreground md:text-sm">
-                  {messages.length} messages
+    <div className="flex flex-col h-full">
+      {/*header*/}
+      <div className="border-b bg-zinc-800 px-4 py-3 md:px-6 flex-shrink-0">
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex items-center justify-start gap-6">
+            <div className="flex h-3 w-3 rounded-full bg-green-500"></div>
+            <div className="flex flex-col items-start justify-start">
+              <h1 className="text-lg font-semibold md:text-lg text-card-foreground">
+                Chat with Admin
+              </h1>
+              <p className="text-xs text-muted-foreground md:text-sm">
+                {messages.length} messages
+              </p>
+            </div>
+          </div>
+          <span className="text-muted-foreground text-xs font-bold">
+            Expected Reply Time {eta}
+          </span>
+        </div>
+      </div>
+
+      {/*messages*/}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6">
+          {messages.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <MessageSquare className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-lg font-medium text-foreground">
+                  No messages yet
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Start the conversation by sending a message
                 </p>
               </div>
             </div>
-            <span className="text-muted-foreground text-xs font-bold">
-              Expected Reply Time {eta}
-            </span>
-          </div>
-        </div>
-
-        {/*messages*/}
-        <div className="flex-1 overflow-hidden min-h-0">
-          <div className="h-full overflow-y-auto px-4 py-4 md:px-6">
-            {messages.length === 0 ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="text-center">
-                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                    <MessageSquare className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-lg font-medium text-foreground">
-                    No messages yet
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Start the conversation by sending a message
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4 pb-4">
-                {messages.map((msg) => {
-                  const isMine = msg.senderId === currentUserId;
-                  return (
-                    <div
-                      key={msg.id}
+          ) : (
+            <div className="space-y-4 pb-4">
+              {messages.map((msg) => {
+                const isMine = msg.senderId === currentUserId;
+                return (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "flex",
+                      isMine ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    <Card
                       className={cn(
-                        "flex",
-                        isMine ? "justify-end" : "justify-start"
+                        "max-w-[85%] md:max-w-[70%] border-0",
+                        isMine
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-zinc-800 text-white"
                       )}
                     >
-                      <Card
-                        className={cn(
-                          "max-w-[85%] md:max-w-[70%] border-0",
-                          isMine
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-zinc-800 text-white"
-                        )}
-                      >
-                        <CardContent className="px-4 py-2">
-                          {msg.type === "TEXT" ? (
-                            <p className="whitespace-pre-wrap break-words text-sm">
-                              {msg.content}
-                            </p>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <FileText className="h-4 w-4" />
-                              <a
-                                href={msg.fileUrl!}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center space-x-1 text-sm underline hover:no-underline"
-                              >
-                                <span>Download file</span>
-                                <Download className="h-3 w-3" />
-                              </a>
-                            </div>
-                          )}
-                          <div
-                            className={cn(
-                              "mt-1 text-xs opacity-70",
-                              isMine ? "text-right" : "text-left"
-                            )}
-                          >
-                            {new Date(msg.createdAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                      <CardContent className="px-4 py-2">
+                        {msg.type === "TEXT" ? (
+                          <p className="whitespace-pre-wrap break-words text-sm">
+                            {msg.content}
+                          </p>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4" />
+                            <a
+                              href={msg.fileUrl!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center space-x-1 text-sm underline hover:no-underline"
+                            >
+                              <span>Download file</span>
+                              <Download className="h-3 w-3" />
+                            </a>
                           </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Input Area */}
-        <div className="border-t bg-card p-4 md:p-6 flex-shrink-0">
-          {/* File Preview */}
-          {fileInput && (
-            <Card className="mb-4 bg-muted">
-              <CardContent className="flex items-center justify-between p-3">
-                <div className="flex items-center space-x-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-card-foreground">
-                    {fileInput.name}
-                  </span>
-                  <Badge variant="secondary" className="text-xs">
-                    {Math.round(fileInput.size / 1024)}KB
-                  </Badge>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFileInput(null)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="flex items-end space-x-2">
-            {/* File Input */}
-            <Button variant="outline" size="sm" className="p-2" asChild>
-              <label className="cursor-pointer">
-                <Paperclip className="h-4 w-4" />
-                <input
-                  id="file-input"
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => setFileInput(e.target.files?.[0] || null)}
-                />
-              </label>
-            </Button>
-
-            {/* Text Input */}
-            <div className="flex-1">
-              <Textarea
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Type a message..."
-                className="min-h-[44px] max-h-32 resize-none"
-                rows={1}
-              />
+                        )}
+                        <div
+                          className={cn(
+                            "mt-1 text-xs opacity-70",
+                            isMine ? "text-right" : "text-left"
+                          )}
+                        >
+                          {new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
             </div>
-
-            {/* Send Button */}
-            <Button
-              onClick={fileInput ? sendFile : sendText}
-              disabled={(!textInput.trim() && !fileInput) || sending}
-              size="sm"
-              className="p-2"
-            >
-              {sending ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-
-          <div className="mt-2 text-xs text-muted-foreground hidden md:flex">
-            Press Enter to send, Shift+Enter for new line
-          </div>
+          )}
         </div>
       </div>
-    </main>
+
+      {/* Input Area */}
+      <div className="border-t bg-card p-4 md:p-6 flex-shrink-0">
+        {/* File Preview */}
+        {fileInput && (
+          <Card className="mb-4 bg-muted">
+            <CardContent className="flex items-center justify-between p-3">
+              <div className="flex items-center space-x-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-card-foreground">
+                  {fileInput.name}
+                </span>
+                <Badge variant="secondary" className="text-xs">
+                  {Math.round(fileInput.size / 1024)}KB
+                </Badge>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFileInput(null)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-end space-x-2">
+          {/* File Input */}
+          <Button variant="outline" size="sm" className="p-2" asChild>
+            <label className="cursor-pointer">
+              <Paperclip className="h-4 w-4" />
+              <input
+                id="file-input"
+                type="file"
+                className="hidden"
+                onChange={(e) => setFileInput(e.target.files?.[0] || null)}
+              />
+            </label>
+          </Button>
+
+          {/* Text Input */}
+          <div className="flex-1">
+            <Textarea
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Type a message..."
+              className="min-h-[44px] max-h-32 resize-none"
+              rows={1}
+            />
+          </div>
+
+          {/* Send Button */}
+          <Button
+            onClick={fileInput ? sendFile : sendText}
+            disabled={(!textInput.trim() && !fileInput) || sending}
+            size="sm"
+            className="p-2"
+          >
+            {sending ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+
+        <div className="mt-2 text-xs text-muted-foreground hidden md:flex">
+          Press Enter to send, Shift+Enter for new line
+        </div>
+      </div>
+    </div>
   );
 };
 

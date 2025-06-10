@@ -15,7 +15,7 @@ const UserChatPage = async () => {
   console.log("this is running 222222");
   const userId = session.user.id;
   return (
-    <div>
+    <div className="flex-1 h-full overflow-hidden">
       <UserChat userId={userId} eta="1hr" />
     </div>
   );

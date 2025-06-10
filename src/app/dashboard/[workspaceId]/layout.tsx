@@ -24,9 +24,11 @@ const layout = async ({ params: { workspaceId }, children }: Props) => {
   // WIP: react-query to fetch workspace data
 
   return (
-    <div className="w-full h-screen">
+    <div className="flex w-full h-screen overflow-hidden">
       <Sidebar workspaceId={workspaceId} />
-      {children}
+      <main className="flex-1 h-screen overflow-hidden flex flex-col">
+        {children}
+      </main>
     </div>
   );
 };
