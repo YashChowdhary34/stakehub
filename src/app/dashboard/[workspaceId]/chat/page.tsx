@@ -1,7 +1,7 @@
 import { getSession } from "@/actions/user";
 import React from "react";
-import Chat from "./UserChat";
 import CenteredErrorMessage from "@/components/global/bad-request/centeredErrorMessage";
+import UserChat from "./UserChat";
 
 const UserChatPage = async () => {
   const session = await getSession();
@@ -12,11 +12,11 @@ const UserChatPage = async () => {
       </div>
     );
   }
-
+  console.log("this is running 222222");
   const userId = session.user.id;
   return (
     <div>
-      <Chat userId={userId} eta="1hr" />
+      <UserChat userId={userId} eta="1hr" />
     </div>
   );
 };

@@ -38,32 +38,38 @@ type Props = {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const UserChat = ({ userId, eta }: Props) => {
+  console.log("UserChat mounted");
   const [chatId, setChatId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [fileInput, setFileInput] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  console.log("this is running 444");
 
   // Initialize Chat
   useEffect(() => {
     async function initChat() {
+      console.log("this is running88888");
       setCreating(true);
       try {
+        console.log("this is running111");
         const res = await fetch("/api/chat", { method: "GET" });
-        if (res.status === 200) {
-          const { chat } = await res.json();
-          setChatId(chat.id);
+        const data = await res.json();
+        if (res.status === 200 && data.chat && data.chat.id) {
+          console.log("from userChat1, chat-", data.chat);
+          setChatId(data.chat.id);
         } else if (res.status === 404) {
           const createRes = await fetch("/api/chat", { method: "POST" });
-          if (createRes.ok) {
-            const { chat } = await createRes.json();
-            setChatId(chat.id);
+          const createData = await createRes.json();
+          if (createRes.ok && createData.chat && createData.chat.id) {
+            console.log("from userChat2, chat-", createData.chat);
+            setChatId(createData.chat.id);
           } else {
-            console.error("Error creating chat:", await createRes.json());
+            console.error("Error creating chat:", createData);
           }
         } else {
-          console.error("Error fetching chat:", await res.json());
+          console.error("Error fetching chat:", data);
         }
       } catch (error) {
         console.error("Chat initialization error:", error);

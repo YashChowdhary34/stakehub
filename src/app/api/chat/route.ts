@@ -86,11 +86,12 @@ export async function GET() {
 }
 
 export async function POST() {
+  console.log("this is 1");
   const session = await getSession();
   if (!session || !session.user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-
+  console.log("this is 2");
   const userId = session.user.id;
   const isAdmin = session.user.role === "ADMIN";
 
@@ -100,6 +101,7 @@ export async function POST() {
       { status: 403 }
     );
   }
+  console.log("this is 3");
 
   if (!adminId) {
     return NextResponse.json(
@@ -107,6 +109,8 @@ export async function POST() {
       { status: 500 }
     );
   }
+
+  console.log("this is 4");
 
   try {
     const existing = await client.chat.findUnique({
@@ -120,6 +124,8 @@ export async function POST() {
       );
     }
 
+    console.log("this is 5");
+
     const newChat = await client.chat.create({
       data: {
         user: { connect: { id: userId } },
@@ -131,7 +137,8 @@ export async function POST() {
         },
       },
     });
-
+    console.log("this is 6");
+    console.log("this is new chat", newChat);
     return NextResponse.json({ chat: newChat }, { status: 201 });
   } catch (error) {
     console.error("Error creating chat:", error);
