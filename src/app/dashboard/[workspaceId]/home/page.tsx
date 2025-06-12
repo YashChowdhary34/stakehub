@@ -65,9 +65,9 @@ const Page = async () => {
                     Login to Your Platform
                   </h3>
                   <p className="text-muted-foreground text-sm">
-                    Navigate to your gaming platform's login page and paste your
-                    credentials. Make sure to keep your login details secure and
-                    don't share them with others.
+                    Navigate to your gaming platform&apos;s login page and paste
+                    your credentials. Make sure to keep your login details
+                    secure and don&apos;t share them with others.
                   </p>
                 </div>
               </div>
@@ -84,7 +84,8 @@ const Page = async () => {
                   </h3>
                   <p className="text-muted-foreground text-sm">
                     Once logged in, you can start enjoying your games. Remember
-                    to log out when you're done, especially on shared devices.
+                    to log out when you&apos;re done, especially on shared
+                    devices.
                   </p>
                 </div>
               </div>
@@ -102,8 +103,8 @@ const Page = async () => {
                   <p className="text-muted-foreground text-sm">
                     Never share your gaming credentials with anyone. If you
                     suspect your account has been compromised, contact support
-                    immediately using the "Get Help" button on your gaming
-                    cards.
+                    immediately using the &quot;Get Help&quot; button on your
+                    gaming cards.
                   </p>
                 </div>
               </div>
