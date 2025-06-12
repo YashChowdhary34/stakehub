@@ -32,8 +32,8 @@ export async function GET() {
               firstName: true,
               lastName: true,
               email: true,
-              deposits: true,
-              withdrawals: true,
+              platforms: true,
+              transactions: true,
             },
           },
           messages: {

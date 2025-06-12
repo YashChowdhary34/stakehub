@@ -31,10 +31,17 @@ enum ClaimStatus {
   APPROVED
 }
 
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWL 
+  AFFILIATE
+  POCKETMONEY
+}
+
 model User {
   // Primary & Identity
   id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email          String             //@unique
+  email          String             // @unique
   clerkId        String             @unique
 
   // Profile
@@ -42,18 +49,16 @@ model User {
   lastName       String?
   image          String?
 
-  // Financials
-  deposits        Float[]             
-  withdrawals     Float[]             
-  profit          Float?             @default(0)
-  transactions   Transaction[]
+  // Financials             
+  platforms         Platform[]
+  transactions      Transaction[]
 
   // Affiliate
   affiliateCode  String?            @default(dbgenerated("gen_random_uuid()")) @db.Uuid @unique
   referralsMade  Referral[]         @relation("ReferralsByUser")
   referralGot    Referral?          @relation("ReferredByUser")
 
-  // Workspace & Pocket Claims
+  // Workspace & Pocketmoney Claims
   workspace      WorkSpace?
 
   // chat
@@ -72,9 +77,6 @@ model User {
   role            Role               @default(USER)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
-
-  // Platforms
-  platform        Platform[]
 }
 
 model Transaction{
@@ -82,20 +84,62 @@ model Transaction{
 
   User        User?   @relation(fields: [userId], references: [id])
   userId      String? @db.Uuid
-  userTransaction   String[]
+  transactionMadeFor    TransactionType
+  transactionAmount     Float?
+  profit                Float?             @default(0)
 }
 
 model Platform {
   id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  User        User?   @relation(fields: [userId], references: [id])
-  userId      String? @db.Uuid
-  credentials Json?
+  User            User?   @relation(fields: [userId], references: [id])
+  userId          String? @db.Uuid
+
+  platformName      String?
+  platformId        String? 
+  platformPassword  String?
+  deposits          Float[]             
+  withdrawals       Float[]  
 }
+
+model WorkSpace {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  User                       User?                @relation(fields: [userId], references: [id])
+  userId                     String?              @unique @db.Uuid
+
+  
+  affiliateEarnings               Float               @default(0)
+  referredUsers                   Int                 @default(0)
+  referredUsersTotalDeposit       Float               @default(0)
+  referredUsersTotalWithdrawl     Float               @default(0)
+
+  
+  hasClaimedPocketMoney      Boolean             @default(false)
+  claimedPocketSteps         Int                 @default(0)
+  pocketMoneyClaims          PocketMoneyClaim[]
+}
+
+model PocketMoneyClaim {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  workspace      WorkSpace    @relation(fields: [workspaceId], references: [id])
+  workspaceId    String       @db.Uuid
+
+  step           Int          @default(0)
+  status         ClaimStatus  @default(UNCLAIMED)
+
+  requestedAt    DateTime?
+  processedAt    DateTime?
+
+  claimVerification   Json?
+  paymentDetails      Json?
+}
+
 
 model Referral {
   id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code         String               //affiliate code of the referring user
+  code         String               // Affiliate code of the referring user
 
   // Who sent the referral (many-per-user)
   referrer     User     @relation("ReferralsByUser", fields: [referrerId], references: [id])
@@ -106,41 +150,6 @@ model Referral {
   referredId   String?  @unique @db.Uuid
 
   createdAt    DateTime @default(now())
-}
-
-model WorkSpace {
-  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  // Owner
-  User                       User?                @relation(fields: [userId], references: [id])
-  userId                     String?              @unique @db.Uuid
-
-  // Affiliate metrics
-  totalAffiliateEarnings     Float               @default(0)
-  totalReferredUsers         Int                 @default(0)
-  totalReferredDeposit       Float               @default(0)
-  totalReferredWithdrawal    Float               @default(0)
-
-  // Pocket money workflow
-  hasClaimedPocketMoney      Boolean             @default(false)
-  claimedPocketSteps         Int                 @default(0)
-  pocketMoneyClaims        PocketMoneyClaim[]
-}
-
-model PocketMoneyClaim {
-  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  // Which workspace it belongs to
-  workspace    WorkSpace    @relation(fields: [workspaceId], references: [id])
-  workspaceId  String       @db.Uuid
-
-  step         Int          @default(1)
-  status       ClaimStatus  @default(UNCLAIMED)
-
-  requestedAt  DateTime     @default(now())
-  reviewETA    DateTime?
-  processedAt  DateTime?
-  paymentDetails Json?
 }
 
 model Chat {
@@ -161,7 +170,7 @@ model Chat {
   // WIP: track unread messages for admin and user
 
 
-  @@unique([userId, adminId]) // ensures one chat per user+admin pair
+  @@unique([userId, adminId]) // Ensures one chat per user+admin pair
 }
 
 model Message {
@@ -174,9 +183,11 @@ model Message {
   sender        User      @relation("MessagesSender", fields: [senderId], references: [id])
   senderId      String    @db.Uuid
 
-  type      String      // text/file
-  content   String?    
+  type      String?      
+  content   String? 
+  fileName  String?   
   fileUrl   String?
+  mimeType  String?
 
   createdAt   DateTime  @default(now())
 
@@ -216,7 +227,10 @@ model AdminAction {
 }
 
 model Setting {
-  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  estimatedReplyTime  Float           @default(0.10) // in hours
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  estimatedReplyTime  Float           @default(10) // In minutes
+  onlineStatus        Boolean         @default(false)
+  adminChatTemplates  Json?
+  userChatTemplates   Json?
   updatedAt           DateTime        @default(now())
 }

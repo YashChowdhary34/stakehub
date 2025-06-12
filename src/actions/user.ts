@@ -129,3 +129,140 @@ export const getEstimatedReplyTime = async () => {
     };
   }
 };
+
+export const createUserGamingId = async (
+  chatId: string,
+  platformName: string,
+  platformId: string,
+  platformPassword: string
+) => {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return {
+        status: 404,
+        message: "User not authenticated",
+      };
+    }
+
+    const userStatus = await client.user.findUnique({
+      where: {
+        clerkId: user.id,
+      },
+      select: {
+        role: true,
+      },
+    });
+    if (!userStatus || userStatus.role === "USER") {
+      return {
+        status: 401,
+        message: "Only admins can create gaming ID",
+      };
+    }
+
+    const findUser = await client.chat.findUnique({
+      where: {
+        id: chatId,
+      },
+      select: {
+        userId: true,
+      },
+    });
+    if (!findUser) {
+      return {
+        status: 404,
+        message: "No user found in the chatId",
+      };
+    }
+
+    const getPlatforms = await client.user.findUnique({
+      where: {
+        id: findUser.userId,
+      },
+      select: {
+        id: true,
+        platforms: true,
+      },
+    });
+    if (!getPlatforms) {
+      return {
+        status: 404,
+        message: "Couldn't find user with the chat userId",
+      };
+    }
+
+    if (
+      getPlatforms.platforms.find(
+        (platform) => platform.platformId === platformId
+      )
+    ) {
+      return {
+        status: 401,
+        message: "PlatformId already present",
+      };
+    }
+
+    const createPlatform = await client.platform.create({
+      data: {
+        userId: getPlatforms.id,
+        platformName: platformName,
+        platformId: platformId,
+        platformPassword: platformPassword,
+        deposits: [],
+        withdrawals: [],
+      },
+    });
+    if (!createPlatform) {
+      return { status: 400, message: "Unable to create platform for user" };
+    }
+
+    return {
+      status: 200,
+      message: "Platform created successfully",
+      platform: true,
+    };
+  } catch (error) {
+    return {
+      status: 500,
+      error: error,
+    };
+  }
+};
+
+// Call only after verifying admin status
+// export const performDeposit = async (userId: string, amount: number) => {
+//   try {
+//     const user = await currentUser();
+//     if (!user) {
+//       return {
+//         status: 404,
+//         message: "User not authenticated",
+//       };
+//     }
+
+//     const depositUser = await client.user.update({
+//       where: {
+//         id: userId,
+//       },
+//       data: {
+//         deposits: { push: amount },
+//       },
+//     });
+//     if (!depositUser) {
+//       return {
+//         status: 400,
+//         message: "Unable to push deposit",
+//       };
+//     }
+
+//     return {
+//       status: 200,
+//       message: "Deposited Successfully",
+//     };
+//   } catch (error) {
+//     return {
+//       status: 500,
+//       message: error,
+//     };
+//   }
+// };

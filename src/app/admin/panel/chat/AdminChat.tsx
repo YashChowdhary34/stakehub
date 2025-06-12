@@ -15,14 +15,14 @@ import {
   Search,
   MoreVertical,
   CheckCheck,
-  MessageCircle,
   BanknoteArrowDown,
   BanknoteArrowUp,
-  List,
+  CirclePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EstimatedReplyTimeSetting from "../../components/EstimatedReplyTimeSetting";
-import DepositForm from "../../components/DepositForm"; // Import the DepositForm component
+import DepositForm from "../../components/DepositForm";
+import CreateGamingIDModal from "../../components/CreateGamingIDModal";
 
 type ChatSummary = {
   id: string;
@@ -63,6 +63,7 @@ const AdminChat = ({ adminId }: Props) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDepositFormOpen, setIsDepositFormOpen] = useState(false); // New state for deposit form
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // 1. Fetch list of chats (Admin view)
   const {
@@ -86,6 +87,7 @@ const AdminChat = ({ adminId }: Props) => {
   } = useSWR(selectedChatId ? `/api/chat/${selectedChatId}` : null, fetcher, {
     refreshInterval: 2000,
   });
+
   const messages: Message[] = messagesData?.messages || [];
 
   // Auto-scroll whenever messages change
@@ -134,7 +136,7 @@ const AdminChat = ({ adminId }: Props) => {
 
       if (response.ok) {
         // Send a confirmation message to the chat
-        await fetch(`/api/chat/${selectedChatId}`, {
+        await fetch(`/api/chat/send/${selectedChatId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -274,6 +276,12 @@ const AdminChat = ({ adminId }: Props) => {
         onClose={() => setIsDepositFormOpen(false)}
         onSubmit={handleDepositSubmit}
         chatId={selectedChatId || undefined}
+      />
+      {/* Create ID modal */}
+      <CreateGamingIDModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        chatId={selectedChatId ?? undefined}
       />
 
       {/* ─── Sidebar: List of Chats ──────────────────────────── */}
@@ -584,25 +592,30 @@ const AdminChat = ({ adminId }: Props) => {
             {/* Quick Actions Bar */}
             <div className="border-t border-b border-border bg-card/50 p-3">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-400/10 hover:bg-yellow-400/20 rounded-lg transition-colors text-yellow-400">
-                  <MessageCircle className="h-4 w-4" />
+                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-lg transition-colors text-yellow-400">
+                  <MessageSquare className="h-4 w-4" />
                   <span className="text-sm font-medium">Templates</span>
                 </button>
                 <button
                   onClick={() => setIsDepositFormOpen(true)}
                   disabled={!selectedChatId}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-500/10 hover:bg-green-500/20 rounded-lg transition-colors text-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg transition-colors text-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <BanknoteArrowDown className="h-4 w-4" />
                   <span className="text-sm font-medium">Deposit</span>
                 </button>
-                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg transition-colors text-amber-600">
+                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg transition-colors text-amber-600">
                   <BanknoteArrowUp className="h-4 w-4" />
                   <span className="text-sm font-medium">Withdraw</span>
                 </button>
-                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-white">
-                  <List className="h-4 w-4" />
-                  <span className="text-sm font-medium">Transactions</span>
+                <button
+                  onClick={() => {
+                    setModalOpen(true);
+                  }}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-colors text-blue-500"
+                >
+                  <CirclePlus className="h-4 w-4" />
+                  <span className="text-sm font-medium">Create ID</span>
                 </button>
               </div>
             </div>
