@@ -229,6 +229,57 @@ export const createUserGamingId = async (
   }
 };
 
+export const getPlatform = async () => {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return {
+        status: 404,
+        message: "User not authenticated",
+      };
+    }
+
+    const getUser = await client.user.findUnique({
+      where: {
+        clerkId: user.id,
+      },
+      select: {
+        id: true,
+        platforms: true,
+      },
+    });
+    if (!getUser) {
+      return {
+        status: 404,
+        message: "User not found in database",
+      };
+    }
+
+    const userPlatforms = await client.platform.findMany({
+      where: {
+        userId: getUser.id,
+      },
+    });
+    if (!userPlatforms) {
+      return {
+        status: 400,
+        message: "Unable to get user platforms",
+      };
+    }
+
+    return {
+      status: 200,
+      message: "Successfully fetched platforms",
+      platforms: userPlatforms,
+    };
+  } catch (error) {
+    return {
+      status: 500,
+      error: error,
+    };
+  }
+};
+
 // Call only after verifying admin status
 // export const performDeposit = async (userId: string, amount: number) => {
 //   try {
