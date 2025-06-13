@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  X,
-  ArrowLeft,
-  Check,
-  BanknoteArrowDown,
-  ChevronDown,
-} from "lucide-react";
+import { X, ArrowLeft, Check, BanknoteArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -22,18 +16,12 @@ interface DepositFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   chatId?: string;
-  onSubmit?: (data: {
-    platformName: string;
-    platformId: string;
-    amount: number;
-  }) => Promise<void>;
 }
 
 const DepositFormModal: React.FC<DepositFormModalProps> = ({
   isOpen,
   onClose,
   chatId,
-  onSubmit,
 }) => {
   // Dropdown menu options
   const options = [
