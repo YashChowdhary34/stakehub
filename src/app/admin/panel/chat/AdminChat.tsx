@@ -21,8 +21,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EstimatedReplyTimeSetting from "../../components/EstimatedReplyTimeSetting";
-import DepositForm from "../../components/DepositForm";
 import CreateGamingIDModal from "../../components/CreateGamingIDModal";
+import DepositFormModal from "../../components/DepositFormModal";
+import WithdrawFormModal from "../../components/WithdrawlFormModal";
 
 type ChatSummary = {
   id: string;
@@ -61,9 +62,10 @@ const AdminChat = ({ adminId }: Props) => {
   const [fileInput, setFileInput] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isDepositFormOpen, setIsDepositFormOpen] = useState(false); // New state for deposit form
+  const [isDepositFormOpen, setIsDepositFormOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isWithdrawlFormOpen, setIsWithdrawlFormOpen] = useState(false);
 
   // 1. Fetch list of chats (Admin view)
   const {
@@ -114,44 +116,6 @@ const AdminChat = ({ adminId }: Props) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendText();
-    }
-  };
-
-  // Handle deposit form submission
-  const handleDepositSubmit = async (amount: number) => {
-    if (!selectedChatId) return;
-
-    try {
-      // Here you would typically make an API call to process the deposit
-      // For now, we'll just send a message to the chat
-      const response = await fetch(`/api/deposit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatId: selectedChatId,
-          amount: amount,
-          userId: chatList.find((c) => c.id === selectedChatId)?.user.id,
-        }),
-      });
-
-      if (response.ok) {
-        // Send a confirmation message to the chat
-        await fetch(`/api/chat/send/${selectedChatId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "TEXT",
-            content: `✅ Deposit processed successfully: $${amount.toLocaleString()}`,
-          }),
-        });
-
-        // Refresh messages and chat list
-        mutateMessages();
-        mutateChats();
-      }
-    } catch (error) {
-      console.error("Error processing deposit:", error);
-      // You could show an error message here
     }
   };
 
@@ -271,12 +235,17 @@ const AdminChat = ({ adminId }: Props) => {
       )}
 
       {/* Deposit Form Modal */}
-      <DepositForm
+      <DepositFormModal
         isOpen={isDepositFormOpen}
         onClose={() => setIsDepositFormOpen(false)}
-        onSubmit={handleDepositSubmit}
-        chatId={selectedChatId || undefined}
+        chatId={selectedChatId ?? undefined}
       />
+      <WithdrawFormModal
+        isOpen={isWithdrawlFormOpen}
+        onClose={() => setIsWithdrawlFormOpen(false)}
+        chatId={selectedChatId ?? undefined}
+      />
+
       {/* Create ID modal */}
       <CreateGamingIDModal
         isOpen={modalOpen}
@@ -598,13 +567,15 @@ const AdminChat = ({ adminId }: Props) => {
                 </button>
                 <button
                   onClick={() => setIsDepositFormOpen(true)}
-                  disabled={!selectedChatId}
                   className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg transition-colors text-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <BanknoteArrowDown className="h-4 w-4" />
                   <span className="text-sm font-medium">Deposit</span>
                 </button>
-                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg transition-colors text-amber-600">
+                <button
+                  onClick={() => setIsWithdrawlFormOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg transition-colors text-amber-600"
+                >
                   <BanknoteArrowUp className="h-4 w-4" />
                   <span className="text-sm font-medium">Withdraw</span>
                 </button>

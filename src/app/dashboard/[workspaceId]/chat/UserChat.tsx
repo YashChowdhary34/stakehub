@@ -247,7 +247,7 @@ const UserChat = ({ userId, eta }: Props) => {
             </div>
           </div>
           <span className="text-white/30 text-[0.75rem] font-bold">
-            Maximum Reply Delay - {eta}
+            Expect Reply Under - {eta}
           </span>
         </div>
       </div>

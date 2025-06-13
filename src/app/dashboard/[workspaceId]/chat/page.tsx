@@ -31,7 +31,7 @@ const UserChatPage = async () => {
     <div className="flex-1 h-full overflow-hidden">
       <UserChat
         userId={userId}
-        eta={`${expectedReplyTime.estimatedReplyTime?.estimatedReplyTime}hrs`}
+        eta={`${expectedReplyTime.estimatedReplyTime?.estimatedReplyTime}mins`}
       />
     </div>
   );
