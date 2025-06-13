@@ -1,9 +1,8 @@
-import { NextApiRequest } from "next";
 import { getSession } from "@/actions/user";
 import client from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextApiRequest) {
+export async function GET(req: NextRequest) {
   try {
     const userSession = await getSession();
     if (!userSession || userSession.status !== 200) {
