@@ -181,18 +181,18 @@ export const addWithdrawToPlatform = async (
     }
 
     let totalDeposits = 0;
-    let totalWithdrawls = 0;
+    //let totalWithdrawls = 0;
     totalDeposits += Number(
       platform.deposits.map((deposit) => {
         return deposit;
       })
     );
 
-    totalWithdrawls += Number(
-      platform.withdrawals.map((withdrawl) => {
-        return withdrawl;
-      })
-    );
+    // totalWithdrawls += Number(
+    //   platform.withdrawals.map((withdrawl) => {
+    //     return withdrawl;
+    //   })
+    // );
 
     // if (totalDeposits - totalWithdrawls <= 0) {
     //   return {
