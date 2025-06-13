@@ -110,8 +110,6 @@ export const addDepositToPlatform = async (
   }
 };
 
-// ...existing code...
-
 export const addWithdrawToPlatform = async (
   platformName: string,
   platformId: string,
@@ -172,9 +170,41 @@ export const addWithdrawToPlatform = async (
         platformName,
         platformId,
       },
+      select: {
+        id: true,
+        deposits: true,
+        withdrawals: true,
+      },
     });
     if (!platform) {
       return { status: 404, message: "Platform not found for this user" };
+    }
+
+    let totalDeposits = 0;
+    let totalWithdrawls = 0;
+    totalDeposits += Number(
+      platform.deposits.map((deposit) => {
+        return deposit;
+      })
+    );
+
+    totalWithdrawls += Number(
+      platform.withdrawals.map((withdrawl) => {
+        return withdrawl;
+      })
+    );
+
+    if (totalWithdrawls - totalDeposits <= 0) {
+      return {
+        status: 401,
+        message: "The user does not have enough funds.",
+      };
+    }
+    if (totalDeposits - amount < 0) {
+      return {
+        status: 401,
+        message: "The user does not have enough money.",
+      };
     }
 
     const addWithdrawOnPlatform = await client.platform.update({
