@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, ArrowLeft, Check, BanknoteArrowDown } from "lucide-react";
+import { X, ArrowLeft, Check, BanknoteArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -40,6 +40,7 @@ const WithdrawFormModal: React.FC<WithdrawFormModalProps> = ({
   const [verifyAmount, setVerifyAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [hasSubmissionError, setHasSubmissionError] = useState(false);
   const [errors, setErrors] = useState({
     platformName: "",
     platformId: "",
@@ -64,8 +65,17 @@ const WithdrawFormModal: React.FC<WithdrawFormModalProps> = ({
       });
       setShowSuccess(false);
       setIsSubmitting(false);
+      setHasSubmissionError(false);
+      setDisplayMessageOnSubmit("Try Again!");
     }
   }, [isOpen]);
+
+  // Reset submission error when user makes changes
+  useEffect(() => {
+    if (hasSubmissionError) {
+      setHasSubmissionError(false);
+    }
+  }, [platformName, platformId, withdrawAmount, verifyAmount]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -174,6 +184,8 @@ const WithdrawFormModal: React.FC<WithdrawFormModalProps> = ({
     e.preventDefault();
     if (!validateForm()) return;
     setIsSubmitting(true);
+    setHasSubmissionError(false);
+
     try {
       if (!chatId) return;
       const result = await addWithdrawToPlatform(
@@ -186,11 +198,14 @@ const WithdrawFormModal: React.FC<WithdrawFormModalProps> = ({
       setDisplayMessageOnSubmit(displayMessage);
       if (result && result.status === 200) {
         setShowSuccess(true);
+      } else {
+        setHasSubmissionError(true);
       }
       setIsSubmitting(false);
     } catch (error) {
       const displayMessage = String(error);
       setDisplayMessageOnSubmit(displayMessage);
+      setHasSubmissionError(true);
       setIsSubmitting(false);
     }
   };
@@ -206,6 +221,14 @@ const WithdrawFormModal: React.FC<WithdrawFormModalProps> = ({
       handleClose();
     }
   };
+
+  // Check if amounts match
+  const amountsMatch =
+    withdrawAmount &&
+    verifyAmount &&
+    parseFloat(withdrawAmount) === parseFloat(verifyAmount) &&
+    !isNaN(parseFloat(withdrawAmount)) &&
+    !isNaN(parseFloat(verifyAmount));
 
   if (!isOpen) return null;
 
@@ -247,8 +270,8 @@ const WithdrawFormModal: React.FC<WithdrawFormModalProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-zinc-800">
               <div className="flex items-center space-x-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10 border border-green-500/20">
-                  <BanknoteArrowDown className="h-5 w-5 text-green-500" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/20">
+                  <BanknoteArrowUp className="h-5 w-5 text-amber-600" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-zinc-100">
@@ -388,28 +411,28 @@ const WithdrawFormModal: React.FC<WithdrawFormModalProps> = ({
                 )}
               </div>
 
-              {/* Amount Match Indicator */}
-              {withdrawAmount && verifyAmount && (
+              {/* Amount Match Indicator / Error Message */}
+              {(withdrawAmount && verifyAmount) || hasSubmissionError ? (
                 <div className="flex items-center space-x-2 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
                   <div
                     className={cn(
                       "h-2 w-2 rounded-full",
-                      parseFloat(withdrawAmount) === parseFloat(verifyAmount) &&
-                        !isNaN(parseFloat(withdrawAmount)) &&
-                        !isNaN(parseFloat(verifyAmount))
+                      hasSubmissionError
+                        ? "bg-red-500"
+                        : amountsMatch
                         ? "bg-green-500"
                         : "bg-red-500"
                     )}
                   />
                   <span className="text-xs text-zinc-400">
-                    {parseFloat(withdrawAmount) === parseFloat(verifyAmount) &&
-                    !isNaN(parseFloat(withdrawAmount)) &&
-                    !isNaN(parseFloat(verifyAmount))
+                    {hasSubmissionError
+                      ? displayMessageOnSubmit
+                      : amountsMatch
                       ? "Amounts match"
                       : "Amounts do not match"}
                   </span>
                 </div>
-              )}
+              ) : null}
 
               {/* Submit Button */}
               <button
@@ -428,13 +451,16 @@ const WithdrawFormModal: React.FC<WithdrawFormModalProps> = ({
                 className={cn(
                   "w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center space-x-2",
                   "disabled:cursor-not-allowed disabled:opacity-50",
-                  "enabled:bg-green-600 enabled:hover:bg-green-700 enabled:text-white enabled:shadow-lg enabled:hover:shadow-xl enabled:active:scale-[0.98]"
+                  "enabled:bg-amber-600 enabled:hover:bg-amber-700 enabled:text-white enabled:shadow-lg enabled:hover:shadow-xl enabled:active:scale-[0.98]"
                 )}
               >
                 {isSubmitting ? (
                   <span>Processing...</span>
                 ) : (
-                  <span>Process Withdrawal</span>
+                  <>
+                    <BanknoteArrowUp className="h-4 w-4" />
+                    <span>Process Withdrawal</span>
+                  </>
                 )}
               </button>
             </form>

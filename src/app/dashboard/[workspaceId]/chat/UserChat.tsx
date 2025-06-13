@@ -8,6 +8,9 @@ import {
   Paperclip,
   Send,
   X,
+  Clock,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
@@ -30,6 +33,13 @@ type Message = {
   createdAt: string;
 };
 
+type MessageStatus = "sending" | "sent" | "failed";
+
+type OptimisticMessage = Message & {
+  status?: MessageStatus;
+  isOptimistic?: boolean;
+};
+
 type Props = {
   userId: string;
   eta: string;
@@ -45,6 +55,9 @@ const UserChat = ({ userId, eta }: Props) => {
   const [fileInput, setFileInput] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [optimisticMessages, setOptimisticMessages] = useState<
+    OptimisticMessage[]
+  >([]);
 
   // Initialize Chat
   useEffect(() => {
@@ -86,12 +99,49 @@ const UserChat = ({ userId, eta }: Props) => {
     refreshInterval: 3000,
   });
 
+  const cleanOptimisticMessages = (
+    serverMsgs: Message[],
+    optimisticMsgs: OptimisticMessage[]
+  ) => {
+    // Remove optimistic messages that now exist in server messages
+    return optimisticMsgs.filter((optimisticMsg) => {
+      // Keep failed messages
+      if (optimisticMsg.status === "failed") return true;
+
+      // Remove sent optimistic messages that have a similar server message
+      const hasServerVersion = serverMsgs.some(
+        (serverMsg) =>
+          serverMsg.content === optimisticMsg.content &&
+          serverMsg.type === optimisticMsg.type &&
+          Math.abs(
+            new Date(serverMsg.createdAt).getTime() -
+              new Date(optimisticMsg.createdAt).getTime()
+          ) < 10000 // Within 10 seconds
+      );
+
+      return !hasServerVersion;
+    });
+  };
+
   // Auto scroll to bottom
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messagesData]);
+  }, [messagesData, optimisticMessages]);
+
+  const serverMessages: Message[] = messagesData?.messages || [];
+  const cleanedOptimisticMessages = cleanOptimisticMessages(
+    serverMessages,
+    optimisticMessages
+  );
+
+  useEffect(() => {
+    const cleaned = cleanOptimisticMessages(serverMessages, optimisticMessages);
+    if (cleaned.length !== optimisticMessages.length) {
+      setOptimisticMessages(cleaned);
+    }
+  }, [serverMessages]);
 
   if (creating) {
     return (
@@ -140,28 +190,58 @@ const UserChat = ({ userId, eta }: Props) => {
     );
   }
 
-  const messages: Message[] = messagesData?.messages || [];
-
+  const allMessages = [...serverMessages, ...cleanedOptimisticMessages];
   // WIP:Do something about this
   const currentUserId = userId;
 
   // Send text message
   const sendText = async () => {
-    if (!textInput.trim() || sending) return;
+    if (!textInput.trim()) return;
 
-    setSending(true);
+    const tempMessage: OptimisticMessage = {
+      id: `temp-${Date.now()}`,
+      senderId: currentUserId,
+      type: "TEXT",
+      content: textInput.trim(),
+      fileUrl: null,
+      createdAt: new Date().toISOString(),
+      status: "sending",
+      isOptimistic: true,
+    };
+
+    // Add optimistic message immediately
+    setOptimisticMessages((prev) => [...prev, tempMessage]);
+    const messageContent = textInput.trim();
+    setTextInput("");
+
     try {
-      await fetch(`/api/chat/${chatId}`, {
+      const response = await fetch(`/api/chat/${chatId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "TEXT", content: textInput.trim() }),
+        body: JSON.stringify({ type: "TEXT", content: messageContent }),
       });
-      setTextInput("");
-      mutate();
+
+      if (response.ok) {
+        // Update status to sent and keep the message
+        setOptimisticMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempMessage.id ? { ...msg, status: "sent" } : msg
+          )
+        );
+
+        // Only remove optimistic message when server data refreshes naturally
+        // The SWR will handle the refresh in background
+      } else {
+        throw new Error("Failed to send message");
+      }
     } catch (error) {
       console.error("Error sending message:", error);
-    } finally {
-      setSending(false);
+      // Update status to failed
+      setOptimisticMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessage.id ? { ...msg, status: "failed" } : msg
+        )
+      );
     }
   };
 
@@ -169,56 +249,82 @@ const UserChat = ({ userId, eta }: Props) => {
   const sendFile = async () => {
     if (!fileInput) return;
 
-    const fileName = fileInput.name;
-    const fileType = fileInput.type;
-
-    const presignRes = await fetch("/api/upload-presign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName, fileType }),
-    });
-
-    if (!presignRes.ok) {
-      console.error("Presign failed:", await presignRes.json());
-      return;
-    }
-    const { uploadUrl, publicUrl } = (await presignRes.json()) as {
-      uploadUrl: string;
-      publicUrl: string;
+    const tempMessage: OptimisticMessage = {
+      id: `temp-file-${Date.now()}`,
+      senderId: currentUserId,
+      type: "FILE",
+      content: null,
+      fileUrl: null,
+      createdAt: new Date().toISOString(),
+      status: "sending",
+      isOptimistic: true,
     };
 
-    console.log(
-      "this is coming from /dashboard/[workspacId]/chat/page.tsx - upload Url -> ",
-      uploadUrl,
-      "publicUrl ->",
-      publicUrl
-    );
-
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": fileType,
-      },
-      body: fileInput,
-    });
-
-    if (!uploadResponse.ok) {
-      console.error("R2 upload failed:", uploadResponse.statusText);
-      return;
-    }
-
-    await fetch(`/api/chat/${chatId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "FILE",
-        fileUrl: publicUrl,
-      }),
-    });
-
+    // Add optimistic message immediately
+    setOptimisticMessages((prev) => [...prev, tempMessage]);
+    const currentFile = fileInput;
     setFileInput(null);
     (document.getElementById("file-input") as HTMLInputElement).value = "";
-    mutate(); // Revalidate swr
+
+    try {
+      const fileName = currentFile.name;
+      const fileType = currentFile.type;
+
+      const presignRes = await fetch("/api/upload-presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName, fileType }),
+      });
+
+      if (!presignRes.ok) {
+        throw new Error("Presign failed");
+      }
+
+      const { uploadUrl, publicUrl } = await presignRes.json();
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": fileType },
+        body: currentFile,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const response = await fetch(`/api/chat/${chatId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "FILE",
+          fileUrl: publicUrl,
+        }),
+      });
+
+      if (response.ok) {
+        // Update status to sent
+        setOptimisticMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === tempMessage.id
+              ? { ...msg, status: "sent", fileUrl: publicUrl }
+              : msg
+          )
+        );
+
+        // Only remove optimistic message when server data refreshes naturally
+        // The SWR will handle the refresh in background
+      } else {
+        throw new Error("Failed to send file message");
+      }
+    } catch (error) {
+      console.error("Error sending file:", error);
+      // Update status to failed
+      setOptimisticMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessage.id ? { ...msg, status: "failed" } : msg
+        )
+      );
+    }
   };
 
   // Handle Enter key
@@ -241,7 +347,7 @@ const UserChat = ({ userId, eta }: Props) => {
                 Chat with Admin
               </h1>
               <p className="text-xs text-muted-foreground md:text-sm">
-                {messages.length} messages
+                {allMessages.length} messages
               </p>
             </div>
           </div>
@@ -254,7 +360,7 @@ const UserChat = ({ userId, eta }: Props) => {
       {/*messages*/}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6">
-          {messages.length === 0 ? (
+          {allMessages.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
@@ -270,56 +376,104 @@ const UserChat = ({ userId, eta }: Props) => {
             </div>
           ) : (
             <div className="space-y-4 pb-4">
-              {messages.map((msg) => {
+              {allMessages.map((msg) => {
                 const isMine = msg.senderId === currentUserId;
+                const isOptimistic = "isOptimistic" in msg && msg.isOptimistic;
+                const status = "status" in msg ? msg.status : "sent";
+
                 return (
                   <div
                     key={msg.id}
                     className={cn(
-                      "flex",
+                      "flex mb-1 px-2",
                       isMine ? "justify-end" : "justify-start"
                     )}
                   >
-                    <Card
+                    <div
                       className={cn(
-                        "max-w-[85%] md:max-w-[70%] border-0",
+                        "relative max-w-[85%] md:max-w-[70%] rounded-lg px-3 py-2 shadow-sm transition-colors duration-200",
                         isMine
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-zinc-800 text-white"
+                          ? status === "failed"
+                            ? "bg-red-500/90 text-white"
+                            : "bg-[#DCF8C6] text-gray-900"
+                          : "bg-white text-gray-900",
+                        // WhatsApp-like tail
+                        isMine ? "rounded-br-sm" : "rounded-bl-sm"
                       )}
+                      style={{
+                        // WhatsApp-like shadow
+                        boxShadow: "0 1px 0.5px rgba(0,0,0,.13)",
+                      }}
                     >
-                      <CardContent className="px-4 py-2">
-                        {msg.type === "TEXT" ? (
-                          <p className="whitespace-pre-wrap break-words text-sm">
+                      {msg.type === "TEXT" ? (
+                        <div className="break-words">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
                             {msg.content}
                           </p>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            <FileText className="h-4 w-4" />
-                            <a
-                              href={msg.fileUrl!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center space-x-1 text-sm underline hover:no-underline"
-                            >
-                              <span>Download file</span>
-                              <Download className="h-3 w-3" />
-                            </a>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2 min-w-[200px]">
+                          <div className="flex-shrink-0">
+                            <FileText className="h-5 w-5 text-gray-600" />
                           </div>
+                          <div className="flex-1 min-w-0">
+                            {msg.fileUrl ? (
+                              <a
+                                href={msg.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                <span className="truncate">Download file</span>
+                                <Download className="h-3 w-3 flex-shrink-0" />
+                              </a>
+                            ) : (
+                              <span className="text-sm text-gray-600">
+                                {status === "sending"
+                                  ? "Uploading..."
+                                  : status === "failed"
+                                  ? "Upload failed"
+                                  : "File"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* WhatsApp-like timestamp and status */}
+                      <div
+                        className={cn(
+                          "flex items-center justify-end gap-1 mt-1 text-xs",
+                          isMine
+                            ? msg.type === "TEXT"
+                              ? "text-gray-600"
+                              : "text-gray-500"
+                            : "text-gray-500"
                         )}
-                        <div
-                          className={cn(
-                            "mt-1 text-xs opacity-70",
-                            isMine ? "text-right" : "text-left"
-                          )}
-                        >
+                      >
+                        <span className="text-[11px]">
                           {new Date(msg.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </span>
+                        {isMine && (
+                          <span className="flex items-center ml-1">
+                            {status === "sending" && (
+                              <Clock className="h-3 w-3 text-gray-500" />
+                            )}
+                            {status === "sent" && (
+                              <div className="flex">
+                                <Check className="h-3 w-3 text-gray-500" />
+                              </div>
+                            )}
+                            {status === "failed" && (
+                              <AlertCircle className="h-3 w-3 text-red-500" />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -385,15 +539,11 @@ const UserChat = ({ userId, eta }: Props) => {
           {/* Send Button */}
           <Button
             onClick={fileInput ? sendFile : sendText}
-            disabled={(!textInput.trim() && !fileInput) || sending}
+            disabled={!textInput.trim() && !fileInput}
             size="sm"
             className="p-2"
           >
-            {sending ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
+            <Send className="h-4 w-4" />
           </Button>
         </div>
 

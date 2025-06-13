@@ -18,8 +18,8 @@ const Navbar = () => {
   const navItems = [
     { name: "Chat", href: "/admin/panel/chat" },
     { name: "User Transactions", href: "/admin/panel/transactions" },
-    { name: "About Us", href: "admin/panel/chat" },
-    { name: "FAQs", href: "admin/panel/chat" },
+    // { name: "About Us", href: "admin/panel/chat" },
+    // { name: "FAQs", href: "admin/panel/chat" },
   ];
 
   return (
@@ -102,7 +102,7 @@ const Navbar = () => {
       {/* Mobile Menu Dropdown */}
       <div
         className={cn(
-          "md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-zinc-950/50 backdrop-blur-sm",
+          "md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-zinc-950/60 backdrop-blur-sm",
           isMenuOpen ? "max-h-64 opacity-100 mt-4" : "max-h-0 opacity-0"
         )}
       >

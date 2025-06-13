@@ -194,19 +194,19 @@ export const addWithdrawToPlatform = async (
       })
     );
 
-    if (totalDeposits - totalWithdrawls <= 0) {
-      return {
-        status: 401,
-        message: "The user does not have enough funds.",
-      };
-    }
+    // if (totalDeposits - totalWithdrawls <= 0) {
+    //   return {
+    //     status: 401,
+    //     message: "The user does not have enough funds.",
+    //   };
+    // }
 
-    if (totalDeposits - amount < 0) {
-      return {
-        status: 401,
-        message: "The user does not have enough money.",
-      };
-    }
+    // if (totalDeposits - amount < 0) {
+    //   return {
+    //     status: 401,
+    //     message: "The user does not have enough money.",
+    //   };
+    // }
 
     const addWithdrawOnPlatform = await client.platform.update({
       where: {
@@ -253,9 +253,10 @@ export const addWithdrawToPlatform = async (
       totalAmount += Number(transaction.transactionAmount);
     });
 
-    const userProfit = totalAmount - totalDeposits;
-
-    if (userProfit > 0) {
+    // this will be negative as we are storing withdrawn in -ve
+    const userProfit = totalDeposits + totalAmount;
+    console.log("profit", userProfit);
+    if (userProfit < 0) {
       const updateProfitForUser = await client.user.update({
         where: {
           id: withdrawingUser.userId,

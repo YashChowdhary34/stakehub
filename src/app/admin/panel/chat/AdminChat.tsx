@@ -18,12 +18,14 @@ import {
   BanknoteArrowDown,
   BanknoteArrowUp,
   CirclePlus,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EstimatedReplyTimeSetting from "../../components/EstimatedReplyTimeSetting";
 import CreateGamingIDModal from "../../components/CreateGamingIDModal";
 import DepositFormModal from "../../components/DepositFormModal";
 import WithdrawFormModal from "../../components/WithdrawlFormModal";
+import TemplateModal from "../../components/AdminTemplateModal";
 
 type ChatSummary = {
   id: string;
@@ -66,6 +68,20 @@ const AdminChat = ({ adminId }: Props) => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isWithdrawlFormOpen, setIsWithdrawlFormOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pendingMessages, setPendingMessages] = useState<
+    Map<
+      string,
+      {
+        content: string;
+        type: "TEXT" | "FILE";
+        fileUrl?: string;
+        timestamp: number;
+      }
+    >
+  >(new Map());
+  const [failedMessages, setFailedMessages] = useState<Set<string>>(new Set());
 
   // 1. Fetch list of chats (Admin view)
   const {
@@ -79,6 +95,14 @@ const AdminChat = ({ adminId }: Props) => {
   );
 
   const chatList: ChatSummary[] = chatListData?.chats || [];
+
+  const filteredChatList = chatList.filter((chat) => {
+    const searchLower = searchQuery.toLowerCase();
+    const userName = chat.user.name?.toLowerCase() || "";
+    const userEmail = chat.user.email.toLowerCase();
+
+    return userName.includes(searchLower) || userEmail.includes(searchLower);
+  });
 
   // 2. When Admin clicks a chat, set selectedChatId
   // 3. Fetch messages for that chat:
@@ -111,6 +135,51 @@ const AdminChat = ({ adminId }: Props) => {
     setSidebarOpen(true);
   };
 
+  const handleTemplateSend = async (template: string) => {
+    if (!selectedChatId || sending) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage = {
+      content: template,
+      type: "TEXT" as const,
+      timestamp: Date.now(),
+    };
+
+    // Add to pending messages
+    setPendingMessages((prev) => new Map(prev).set(tempId, tempMessage));
+
+    setSending(true);
+    try {
+      await fetch(`/api/chat/${selectedChatId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "TEXT", content: template }),
+      });
+
+      // Remove from pending on success
+      setPendingMessages((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(tempId);
+        return newMap;
+      });
+
+      mutateMessages();
+      mutateChats();
+    } catch (error) {
+      console.error("Error sending template message:", error);
+
+      // Mark as failed
+      setFailedMessages((prev) => new Set(prev).add(tempId));
+
+      // Show error alert
+      alert("Failed to send message. Please try again.");
+
+      throw error;
+    } finally {
+      setSending(false);
+    }
+  };
+
   // Handle Enter key
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -123,18 +192,43 @@ const AdminChat = ({ adminId }: Props) => {
   const sendText = async () => {
     if (!textInput.trim() || sending || !selectedChatId) return;
 
+    const tempId = `temp-${Date.now()}`;
+    const content = textInput.trim();
+    const tempMessage = {
+      content,
+      type: "TEXT" as const,
+      timestamp: Date.now(),
+    };
+
+    // Add to pending messages
+    setPendingMessages((prev) => new Map(prev).set(tempId, tempMessage));
+    setTextInput(""); // Clear input immediately
+
     setSending(true);
     try {
       await fetch(`/api/chat/${selectedChatId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "TEXT", content: textInput.trim() }),
+        body: JSON.stringify({ type: "TEXT", content }),
       });
-      setTextInput("");
+
+      // Remove from pending on success
+      setPendingMessages((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(tempId);
+        return newMap;
+      });
+
       mutateMessages();
-      mutateChats(); // to update last message preview in sidebar
+      mutateChats();
     } catch (error) {
       console.error("Error sending message:", error);
+
+      // Mark as failed
+      setFailedMessages((prev) => new Set(prev).add(tempId));
+
+      // Show error alert
+      alert("Failed to send message. Please try again.");
     } finally {
       setSending(false);
     }
@@ -144,9 +238,23 @@ const AdminChat = ({ adminId }: Props) => {
   const sendFile = async () => {
     if (!fileInput || !selectedChatId) return;
 
+    const tempId = `temp-${Date.now()}`;
+    const fileName = fileInput.name;
+    const tempMessage = {
+      content: fileName,
+      type: "FILE" as const,
+      fileUrl: "",
+      timestamp: Date.now(),
+    };
+
+    // Add to pending messages
+    setPendingMessages((prev) => new Map(prev).set(tempId, tempMessage));
+    setFileInput(null);
+    (document.getElementById("admin-file-input") as HTMLInputElement).value =
+      "";
+
     setSending(true);
     try {
-      const fileName = fileInput.name;
       const fileType = fileInput.type;
 
       const presignRes = await fetch("/api/upload-presign", {
@@ -156,8 +264,7 @@ const AdminChat = ({ adminId }: Props) => {
       });
 
       if (!presignRes.ok) {
-        console.error("Presign failed:", await presignRes.json());
-        return;
+        throw new Error("Presign failed");
       }
 
       const { uploadUrl, publicUrl } = (await presignRes.json()) as {
@@ -174,8 +281,7 @@ const AdminChat = ({ adminId }: Props) => {
       });
 
       if (!uploadResponse.ok) {
-        console.error("R2 upload failed:", uploadResponse.statusText);
-        return;
+        throw new Error("Upload failed");
       }
 
       await fetch(`/api/chat/${selectedChatId}`, {
@@ -187,13 +293,23 @@ const AdminChat = ({ adminId }: Props) => {
         }),
       });
 
-      setFileInput(null);
-      (document.getElementById("admin-file-input") as HTMLInputElement).value =
-        "";
+      // Remove from pending on success
+      setPendingMessages((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(tempId);
+        return newMap;
+      });
+
       mutateMessages();
       mutateChats();
     } catch (error) {
       console.error("Error sending file:", error);
+
+      // Mark as failed
+      setFailedMessages((prev) => new Set(prev).add(tempId));
+
+      // Show error alert
+      alert("Failed to send file. Please try again.");
     } finally {
       setSending(false);
     }
@@ -253,6 +369,12 @@ const AdminChat = ({ adminId }: Props) => {
         chatId={selectedChatId ?? undefined}
       />
 
+      <TemplateModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        onSendTemplate={handleTemplateSend}
+      />
+
       {/* ─── Sidebar: List of Chats ──────────────────────────── */}
       <div
         className={cn(
@@ -269,6 +391,8 @@ const AdminChat = ({ adminId }: Props) => {
             <input
               type="text"
               placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
@@ -279,8 +403,8 @@ const AdminChat = ({ adminId }: Props) => {
                   Admin Chat
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  {chatList.length} conversation
-                  {chatList.length !== 1 ? "s" : ""}
+                  {filteredChatList.length} conversation
+                  {filteredChatList.length !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>
@@ -290,22 +414,25 @@ const AdminChat = ({ adminId }: Props) => {
 
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto">
-          {chatList.length === 0 ? (
+          {filteredChatList.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                 <MessageSquare className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-medium text-foreground mb-2">
-                No conversations yet
+                {searchQuery
+                  ? "No conversations found"
+                  : "No conversations yet"}
               </h3>
               <p className="text-sm text-muted-foreground max-w-xs">
-                When users start conversations, they&apos;ll appear here for you
-                to respond to.
+                {searchQuery
+                  ? "Try adjusting your search terms"
+                  : "When users start conversations, they'll appear here for you to respond to."}
               </p>
             </div>
           ) : (
             <div className="py-2">
-              {chatList.map((chat) => {
+              {filteredChatList.map((chat) => {
                 const lastMsg = chat.messages[0];
                 const isSelected = selectedChatId === chat.id;
                 const timeAgo = lastMsg ? new Date(lastMsg.createdAt) : null;
@@ -329,9 +456,14 @@ const AdminChat = ({ adminId }: Props) => {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <h4 className="font-medium text-foreground truncate pr-2">
-                            {chat.user.name || chat.user.email.split("@")[0]}
-                          </h4>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-foreground truncate pr-2">
+                              {chat.user.name || "Anonymous User"}
+                            </h4>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {chat.user.email}
+                            </p>
+                          </div>
                           {timeAgo && (
                             <span className="text-xs text-muted-foreground flex-shrink-0">
                               {timeAgo.toLocaleTimeString([], {
@@ -377,7 +509,7 @@ const AdminChat = ({ adminId }: Props) => {
         </div>
       </div>
 
-      {/* ─── Main Chat Window ─────────────────────────────────── */}
+      {/* Main Chat Window */}
       <div className="flex-1 flex flex-col min-w-0">
         {selectedChatId ? (
           <>
@@ -410,14 +542,14 @@ const AdminChat = ({ adminId }: Props) => {
                     <div>
                       <h3 className="font-semibold text-foreground">
                         {chatList.find((c) => c.id === selectedChatId)?.user
-                          .name ||
-                          chatList
-                            .find((c) => c.id === selectedChatId)
-                            ?.user.email?.split("@")[0]}
+                          .name || "Anonymous User"}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {messages.length} message
-                        {messages.length !== 1 ? "s" : ""} • Online
+                        {
+                          chatList.find((c) => c.id === selectedChatId)?.user
+                            .email
+                        }{" "}
+                        • Online
                       </p>
                     </div>
                   </div>
@@ -448,6 +580,7 @@ const AdminChat = ({ adminId }: Props) => {
                   </div>
                 ) : (
                   <div className="px-4 py-6 space-y-4">
+                    {/* Regular messages */}
                     {messages.map((msg, index) => {
                       const isAdminSender = msg.senderId === adminId;
                       const showTime =
@@ -548,6 +681,58 @@ const AdminChat = ({ adminId }: Props) => {
                         </div>
                       );
                     })}
+
+                    {/* Pending messages */}
+                    {Array.from(pendingMessages.entries()).map(
+                      ([tempId, tempMsg]) => (
+                        <div key={tempId}>
+                          <div className="flex items-end space-x-2 justify-end">
+                            <div
+                              className={cn(
+                                "max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 shadow-sm rounded-br-md transition-colors",
+                                failedMessages.has(tempId)
+                                  ? "bg-red-500/80 text-white"
+                                  : "bg-primary text-primary-foreground"
+                              )}
+                            >
+                              {tempMsg.type === "TEXT" ? (
+                                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                                  {tempMsg.content}
+                                </p>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <div className="p-2 rounded-lg bg-primary-foreground/10">
+                                    <FileText className="h-4 w-4" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-sm truncate">
+                                      {tempMsg.content}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-end mt-1 space-x-1 text-primary-foreground/70">
+                                <span className="text-xs">
+                                  {new Date(
+                                    tempMsg.timestamp
+                                  ).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                                {failedMessages.has(tempId) ? (
+                                  <X className="h-3 w-3 text-red-200" />
+                                ) : (
+                                  <Clock className="h-3 w-3" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    )}
+
                     <div ref={messagesEndRef} />
                   </div>
                 )}
@@ -557,7 +742,11 @@ const AdminChat = ({ adminId }: Props) => {
             {/* Quick Actions Bar */}
             <div className="border-t border-b border-border bg-card/50 p-3">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <button className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-lg transition-colors text-yellow-400">
+                <button
+                  onClick={() => setIsTemplateModalOpen(true)}
+                  disabled={!selectedChatId} // Add this line
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-lg transition-colors text-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <MessageSquare className="h-4 w-4" />
                   <span className="text-sm font-medium">Templates</span>
                 </button>
@@ -659,7 +848,7 @@ const AdminChat = ({ adminId }: Props) => {
                 </button>
               </div>
 
-              <div className="mt-2 text-xs text-muted-foreground">
+              <div className="mt-2 text-xs text-muted-foreground md:flex hidden">
                 Press Enter to send • Shift+Enter for new line
               </div>
             </div>

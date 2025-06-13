@@ -231,7 +231,7 @@ model Setting {
   id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   estimatedReplyTime  Float           @default(10) // In minutes
   onlineStatus        Boolean         @default(false)
-  adminChatTemplates  Json?
-  userChatTemplates   Json?
+  adminChatTemplates  String[]
+  userChatTemplates   String[]
   updatedAt           DateTime        @default(now())
 }

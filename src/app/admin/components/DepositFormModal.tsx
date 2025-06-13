@@ -41,6 +41,7 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
   const [verifyAmount, setVerifyAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [hasSubmissionError, setHasSubmissionError] = useState(false);
   const [errors, setErrors] = useState({
     platformName: "",
     platformId: "",
@@ -67,6 +68,7 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
       });
       setShowSuccess(false);
       setIsSubmitting(false);
+      setHasSubmissionError(false);
     }
   }, [isOpen]);
 
@@ -142,6 +144,7 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    setHasSubmissionError(false);
     try {
       if (!chatId) return;
       const addDeposit = await addDepositToPlatform(
@@ -155,11 +158,14 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
       setDisplayMessageOnSubmit(displayMessage);
       if (addDeposit && addDeposit.status === 200) {
         setShowSuccess(true);
+      } else {
+        setHasSubmissionError(true);
       }
       setIsSubmitting(false);
     } catch (error) {
       const displayMessage = String(error);
       setDisplayMessageOnSubmit(displayMessage);
+      setHasSubmissionError(true);
       setIsSubmitting(false);
     }
   };
@@ -204,6 +210,10 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
     if (errors.depositAmount) {
       setErrors((prev) => ({ ...prev, depositAmount: "" }));
     }
+    // Clear submission error when user modifies input
+    if (hasSubmissionError) {
+      setHasSubmissionError(false);
+    }
   };
 
   const handleVerifyAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,6 +224,10 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
     if (errors.verifyAmount) {
       setErrors((prev) => ({ ...prev, verifyAmount: "" }));
     }
+    // Clear submission error when user modifies input
+    if (hasSubmissionError) {
+      setHasSubmissionError(false);
+    }
   };
 
   const handlePlatformIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,6 +237,10 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
     if (errors.platformId) {
       setErrors((prev) => ({ ...prev, platformId: "" }));
     }
+    // Clear submission error when user modifies input
+    if (hasSubmissionError) {
+      setHasSubmissionError(false);
+    }
   };
 
   const handlePlatformNameChange = (value: string) => {
@@ -231,6 +249,10 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
     // Clear errors when user selects
     if (errors.platformName) {
       setErrors((prev) => ({ ...prev, platformName: "" }));
+    }
+    // Clear submission error when user modifies input
+    if (hasSubmissionError) {
+      setHasSubmissionError(false);
     }
   };
 
@@ -253,7 +275,7 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
               <Check className="h-10 w-10 text-green-500" />
             </div>
             <h3 className="text-xl font-semibold text-zinc-100 mb-2">
-              ${displayMessageOnSubmit}
+              {displayMessageOnSubmit}
             </h3>
             <p className="text-zinc-400 mb-2">
               ₹{parseFloat(depositAmount).toLocaleString()} has been processed
@@ -415,23 +437,29 @@ const DepositFormModal: React.FC<DepositFormModalProps> = ({
                 )}
               </div>
 
-              {/* Amount Match Indicator */}
+              {/* Amount Match Indicator or Error Message */}
               {depositAmount && verifyAmount && (
                 <div className="flex items-center space-x-2 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
                   <div
                     className={cn(
                       "h-2 w-2 rounded-full",
-                      parseFloat(depositAmount) === parseFloat(verifyAmount) &&
-                        !isNaN(parseFloat(depositAmount)) &&
-                        !isNaN(parseFloat(verifyAmount))
+                      hasSubmissionError
+                        ? "bg-red-500"
+                        : parseFloat(depositAmount) ===
+                            parseFloat(verifyAmount) &&
+                          !isNaN(parseFloat(depositAmount)) &&
+                          !isNaN(parseFloat(verifyAmount))
                         ? "bg-green-500"
                         : "bg-red-500"
                     )}
                   />
                   <span className="text-xs text-zinc-400">
-                    {parseFloat(depositAmount) === parseFloat(verifyAmount) &&
-                    !isNaN(parseFloat(depositAmount)) &&
-                    !isNaN(parseFloat(verifyAmount))
+                    {hasSubmissionError
+                      ? displayMessageOnSubmit
+                      : parseFloat(depositAmount) ===
+                          parseFloat(verifyAmount) &&
+                        !isNaN(parseFloat(depositAmount)) &&
+                        !isNaN(parseFloat(verifyAmount))
                       ? "Amounts match"
                       : "Amounts do not match"}
                   </span>
