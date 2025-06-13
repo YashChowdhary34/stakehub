@@ -53,7 +53,6 @@ const UserChat = ({ userId, eta }: Props) => {
   const [creating, setCreating] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [fileInput, setFileInput] = useState<File | null>(null);
-  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<
     OptimisticMessage[]
@@ -94,7 +93,7 @@ const UserChat = ({ userId, eta }: Props) => {
   const {
     data: messagesData,
     error: messagesError,
-    mutate,
+    //mutate,
   } = useSWR(chatId ? `/api/chat/${chatId}` : null, fetcher, {
     refreshInterval: 3000,
   });
@@ -378,7 +377,7 @@ const UserChat = ({ userId, eta }: Props) => {
             <div className="space-y-4 pb-4">
               {allMessages.map((msg) => {
                 const isMine = msg.senderId === currentUserId;
-                const isOptimistic = "isOptimistic" in msg && msg.isOptimistic;
+                // const isOptimistic = "isOptimistic" in msg && msg.isOptimistic;
                 const status = "status" in msg ? msg.status : "sent";
 
                 return (

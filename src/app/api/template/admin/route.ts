@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    let updatedTemplates = [...settings.adminChatTemplates];
+    const updatedTemplates = [...settings.adminChatTemplates];
 
     switch (action) {
       case "add":
