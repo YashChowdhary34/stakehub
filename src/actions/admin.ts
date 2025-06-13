@@ -44,7 +44,11 @@ export const onAuthenticateAdmin = async () => {
       isAdmin: false,
     };
   } catch (error) {
-    return { status: 500, message: error, isAdmin: false };
+    return {
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+      isAdmin: false,
+    };
   }
 };
 
@@ -95,6 +99,10 @@ export const setEstimatedReplyTime = async (time: number) => {
       success: false,
     };
   } catch (error) {
-    return { status: 500, message: error, success: false };
+    return {
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+      success: false,
+    };
   }
 };

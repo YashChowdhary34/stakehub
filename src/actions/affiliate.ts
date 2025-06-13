@@ -29,7 +29,7 @@ export const verifyAffiliateCode = async (affiliateCode: string) => {
   } catch (error) {
     return {
       status: 500,
-      error: error,
+      error: error instanceof Error ? error.message : String(error),
       message: "Check the affiliate code and try again",
       referrer: null,
     };
@@ -89,7 +89,7 @@ export const addReferral = async (
 
     return {
       status: 500,
-      error: error,
+      error: error instanceof Error ? error.message : String(error),
       message: "Exception occured try again",
     };
   }
@@ -137,7 +137,7 @@ export const getReferralsCount = async () => {
   } catch (error) {
     return {
       status: 500,
-      error: error,
+      error: error instanceof Error ? error.message : String(error),
       message: "Error occured while fetching referrals",
       referralsMadeCount: 0,
     };

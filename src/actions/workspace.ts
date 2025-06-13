@@ -33,6 +33,10 @@ export const verifyAccessToWorkspace = async (workspaceId: string) => {
       error: null,
     };
   } catch (error) {
-    return { status: 403, data: { workspace: null }, error: error };
+    return {
+      status: 403,
+      data: { workspace: null },
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
 };

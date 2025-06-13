@@ -46,7 +46,11 @@ export const onAuthenticateUser = async () => {
 
     return { status: 201, message: "User created successfully", user: newUser };
   } catch (error) {
-    return { status: 500, message: error, user: null };
+    return {
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+      user: null,
+    };
   }
 };
 
@@ -63,6 +67,7 @@ export const getSession = async () => {
       select: {
         id: true,
         role: true,
+        profit: true,
       },
     });
 
@@ -77,7 +82,7 @@ export const getSession = async () => {
   } catch (error) {
     return {
       status: 500,
-      message: error,
+      message: error instanceof Error ? error.message : String(error),
       user: null,
     };
   }
@@ -124,7 +129,7 @@ export const getEstimatedReplyTime = async () => {
   } catch (error) {
     return {
       status: 500,
-      message: error,
+      message: error instanceof Error ? error.message : String(error),
       getEstimatedReplyTime: null,
     };
   }
@@ -224,7 +229,7 @@ export const createUserGamingId = async (
   } catch (error) {
     return {
       status: 500,
-      error: error,
+      message: error instanceof Error ? error.message : String(error),
     };
   }
 };
@@ -275,7 +280,7 @@ export const getPlatform = async () => {
   } catch (error) {
     return {
       status: 500,
-      error: error,
+      message: error instanceof Error ? error.message : String(error),
     };
   }
 };
@@ -313,7 +318,7 @@ export const getPlatform = async () => {
 //   } catch (error) {
 //     return {
 //       status: 500,
-//       message: error,
+//       message: error instanceof Error ? error.message : String(error),
 //     };
 //   }
 // };

@@ -194,12 +194,13 @@ export const addWithdrawToPlatform = async (
       })
     );
 
-    if (totalWithdrawls - totalDeposits <= 0) {
+    if (totalDeposits - totalWithdrawls <= 0) {
       return {
         status: 401,
         message: "The user does not have enough funds.",
       };
     }
+
     if (totalDeposits - amount < 0) {
       return {
         status: 401,
@@ -237,10 +238,47 @@ export const addWithdrawToPlatform = async (
       };
     }
 
-    return {
-      status: 200,
-      message: "Amount withdrawn from user's ID successfully",
-    };
+    // update user profits
+    const allTransactions = await client.transaction.findMany({
+      where: {
+        userId: withdrawingUser.userId,
+      },
+      select: {
+        transactionAmount: true,
+      },
+    });
+
+    let totalAmount = 0;
+    allTransactions.forEach((transaction) => {
+      totalAmount += Number(transaction.transactionAmount);
+    });
+
+    const userProfit = totalAmount - totalDeposits;
+
+    if (userProfit > 0) {
+      const updateProfitForUser = await client.user.update({
+        where: {
+          id: withdrawingUser.userId,
+        },
+        data: {
+          profit: userProfit,
+        },
+      });
+      if (!updateProfitForUser) {
+        return { status: 401, message: "Couldn't update user profit" };
+      }
+
+      return {
+        status: 200,
+        message: "Amount withdrawn from user's ID successfully",
+        profit: updateProfitForUser.profit,
+      };
+    } else {
+      return {
+        status: 200,
+        message: "Amount withdrawn from user's ID successfully",
+      };
+    }
   } catch (error) {
     return {
       status: 500,

@@ -52,7 +52,7 @@ model User {
   // Financials             
   platforms         Platform[]
   transactions      Transaction[]
-  profit                Float?             @default(0)
+  profit            Float?             @default(0)
 
   // Affiliate
   affiliateCode  String?            @default(dbgenerated("gen_random_uuid()")) @db.Uuid @unique
@@ -87,6 +87,7 @@ model Transaction{
   userId      String? @db.Uuid
   transactionMadeFor    TransactionType
   transactionAmount     String?
+  transactionMadeOn     DateTime         @default(now())
 }
 
 model Platform {
