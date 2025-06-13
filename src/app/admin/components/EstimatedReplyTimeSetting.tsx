@@ -70,11 +70,11 @@ export default function EstimatedReplyTimeSetting() {
         <option value="" disabled>
           Select time
         </option>
-        <option value={0.25}>15 minutes</option>
-        <option value={0.5}>30 minutes</option>
-        <option value={1}>1 hour</option>
-        <option value={2}>2 hours</option>
-        <option value={4}>4 hours</option>
+        <option value={15}>15 minutes</option>
+        <option value={30}>30 minutes</option>
+        <option value={60}>1 hour</option>
+        <option value={120}>2 hours</option>
+        <option value={240}>4 hours</option>
       </select>
       {saving && <span className="ml-2 text-xs text-gray-500">Saving...</span>}
       {error && <div className="text-red-500 text-xs mt-2">{error}</div>}

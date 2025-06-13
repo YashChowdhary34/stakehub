@@ -51,7 +51,6 @@ const UserChat = ({ userId, eta }: Props) => {
     async function initChat() {
       setCreating(true);
       try {
-        console.log("this is running111");
         const res = await fetch("/api/chat", { method: "GET" });
         const data = await res.json();
         if (res.status === 200 && data.chat && data.chat.id) {

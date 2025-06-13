@@ -17,7 +17,6 @@ export async function GET(req: NextApiRequest) {
     const take = parseInt(url.searchParams.get("take") || "10", 10);
     const cursor = url.searchParams.get("cursor");
 
-    // 3. Build Prisma query
     let transactions;
     if (cursor) {
       // Fetch next page after the cursor
@@ -37,7 +36,6 @@ export async function GET(req: NextApiRequest) {
       });
     }
 
-    // 4. Determine nextCursor
     let nextCursor: string | null = null;
     if (transactions.length === take) {
       // More items may exist: set cursor to last item's id
@@ -45,7 +43,6 @@ export async function GET(req: NextApiRequest) {
     }
     // If fewer than `take`, nextCursor stays null: indicates no more pages.
 
-    // 5. Return results
     return NextResponse.json({ nextCursor, transactions }, { status: 200 });
   } catch (error) {
     console.error("Error in /api/transactions:", error);

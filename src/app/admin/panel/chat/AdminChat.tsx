@@ -229,7 +229,7 @@ const AdminChat = ({ adminId }: Props) => {
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -256,18 +256,24 @@ const AdminChat = ({ adminId }: Props) => {
       {/* ─── Sidebar: List of Chats ──────────────────────────── */}
       <div
         className={cn(
-          "fixed lg:relative inset-y-0 left-0 z-50 w-full max-w-sm bg-card border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0",
+          "fixed lg:relative inset-y-0 left-0 z-40 w-full max-w-sm bg-card border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           "lg:w-80"
         )}
       >
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-border bg-card/95 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-3">
+        <div className="p-4 border-b border-border bg-card/95 backdrop-blur-sm mt-14">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              className="w-full pl-10 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+          <div className="flex items-center justify-between mt-3">
             <div className="flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                <MessageSquare className="h-5 w-5 text-primary" />
-              </div>
               <div>
                 <h1 className="text-lg font-semibold text-foreground">
                   Admin Chat
@@ -279,16 +285,6 @@ const AdminChat = ({ adminId }: Props) => {
               </div>
             </div>
             <EstimatedReplyTimeSetting />
-          </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              className="w-full pl-10 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-            />
           </div>
         </div>
 
