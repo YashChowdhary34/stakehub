@@ -1,5 +1,5 @@
 import React from "react";
-import UserTransactions from "./UserTransactions";
+import UserTransactions from "./transactions/UserTransactions";
 import { getSession } from "@/actions/user";
 import CenteredErrorMessage from "@/components/global/bad-request/centeredErrorMessage";
 
@@ -11,9 +11,10 @@ const TransactionsPage = async () => {
 
   const profit = userSession.user?.profit || 0;
   return (
-    <main className="fixed top-16 md:top-0 left-0 w-full h-screen md:ml-64 md:w-[calc(100%-16rem)] bg-background">
+    <div className="h-full w-full overflow-x-hidden">
+      <div className="h-16 md:hidden" />
       <UserTransactions totalProfit={profit} />
-    </main>
+    </div>
   );
 };
 

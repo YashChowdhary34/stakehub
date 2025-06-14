@@ -138,7 +138,7 @@ export default function UserTransactionList({ clientProfit }: Props) {
   );
 
   return (
-    <div className="min-h-screen bg-background font-inter">
+    <div className="min-h-screen bg-background">
       {/* Navbar */}
       <nav className="h-16 border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="h-full px-4 flex items-center justify-between max-w-7xl mx-auto">

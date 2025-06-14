@@ -180,34 +180,6 @@ export const addWithdrawToPlatform = async (
       return { status: 404, message: "Platform not found for this user" };
     }
 
-    let totalDeposits = 0;
-    //let totalWithdrawls = 0;
-    totalDeposits += Number(
-      platform.deposits.map((deposit) => {
-        return deposit;
-      })
-    );
-
-    // totalWithdrawls += Number(
-    //   platform.withdrawals.map((withdrawl) => {
-    //     return withdrawl;
-    //   })
-    // );
-
-    // if (totalDeposits - totalWithdrawls <= 0) {
-    //   return {
-    //     status: 401,
-    //     message: "The user does not have enough funds.",
-    //   };
-    // }
-
-    // if (totalDeposits - amount < 0) {
-    //   return {
-    //     status: 401,
-    //     message: "The user does not have enough money.",
-    //   };
-    // }
-
     const addWithdrawOnPlatform = await client.platform.update({
       where: {
         id: platform.id,
@@ -248,15 +220,16 @@ export const addWithdrawToPlatform = async (
       },
     });
 
-    let totalAmount = 0;
+    let userProfit = 0;
     allTransactions.forEach((transaction) => {
-      totalAmount += Number(transaction.transactionAmount);
+      userProfit += Number(transaction.transactionAmount);
     });
 
     // this will be negative as we are storing withdrawn in -ve
-    const userProfit = totalDeposits + totalAmount;
-    console.log("profit", userProfit);
+
     if (userProfit < 0) {
+      userProfit *= -1;
+
       const updateProfitForUser = await client.user.update({
         where: {
           id: withdrawingUser.userId,
