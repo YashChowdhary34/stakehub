@@ -11,7 +11,6 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { ChartTooltipContent } from "@/components/ui/chart";
 
 interface AnalyticsData {
   day: string;
@@ -32,14 +31,12 @@ interface AnalyticsChartProps {
 export function AnalyticsChart({ data, tooltip }: AnalyticsChartProps) {
   const [mounted, setMounted] = useState(false);
 
-  // Prevent hydration errors with SSR
   useEffect(() => {
     setMounted(true);
   }, []);
 
   if (!mounted) return null;
 
-  // Transform data for the chart
   const chartData = data.map((item) => ({
     name: item.day,
     income: item.deposit,
@@ -59,21 +56,36 @@ export function AnalyticsChart({ data, tooltip }: AnalyticsChartProps) {
       >
         <defs>
           <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#82ca9d" stopOpacity={0.1} />
+            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" axisLine={false} tickLine={false} />
-        <YAxis axisLine={false} tickLine={false} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          vertical={false}
+          stroke="#374151"
+        />
+        <XAxis
+          dataKey="name"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: "#9ca3af", fontSize: 12 }}
+        />
+        <YAxis
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: "#9ca3af", fontSize: 12 }}
+        />
         <Tooltip
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
               return (
-                <ChartTooltipContent>
-                  <div className="text-sm font-medium">${payload[0].value}</div>
-                  <div className="text-xs text-gray-500">{tooltip.date}</div>
-                </ChartTooltipContent>
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 shadow-lg">
+                  <div className="text-sm font-medium text-white">
+                    ${payload[0].value}
+                  </div>
+                  <div className="text-xs text-zinc-400">{tooltip.date}</div>
+                </div>
               );
             }
             return null;
@@ -82,19 +94,19 @@ export function AnalyticsChart({ data, tooltip }: AnalyticsChartProps) {
         <Area
           type="monotone"
           dataKey="income"
-          stroke="#82ca9d"
+          stroke="#10b981"
           fillOpacity={1}
           fill="url(#colorIncome)"
-          dot={{ r: 4, strokeWidth: 2 }}
-          activeDot={{ r: 6, strokeWidth: 2 }}
+          dot={{ r: 4, strokeWidth: 2, fill: "#10b981" }}
+          activeDot={{ r: 6, strokeWidth: 2, fill: "#10b981" }}
         />
         <Line
           type="monotone"
           dataKey="expenses"
-          stroke="#a4de7c"
+          stroke="#ef4444"
           strokeWidth={2}
-          dot={{ r: 4, strokeWidth: 2 }}
-          activeDot={{ r: 6, strokeWidth: 2 }}
+          dot={{ r: 4, strokeWidth: 2, fill: "#ef4444" }}
+          activeDot={{ r: 6, strokeWidth: 2, fill: "#ef4444" }}
         />
       </AreaChart>
     </ResponsiveContainer>

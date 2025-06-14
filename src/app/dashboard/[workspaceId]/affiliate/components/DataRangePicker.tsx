@@ -7,7 +7,7 @@ interface DateRangePickerProps {
 
 export function DateRangePicker({ value }: DateRangePickerProps) {
   return (
-    <div className="flex items-center gap-2 text-sm text-gray-500 border rounded-md px-2 py-1">
+    <div className="flex items-center gap-2 text-sm text-zinc-400 border border-zinc-700 bg-zinc-800 rounded-md px-3 py-2 hover:bg-zinc-700 transition-colors">
       <Calendar className="h-4 w-4" />
       <span>{value}</span>
     </div>

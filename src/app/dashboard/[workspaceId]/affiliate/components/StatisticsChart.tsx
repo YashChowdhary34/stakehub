@@ -1,3 +1,5 @@
+"use client";
+
 import {
   BarChart,
   Bar,
@@ -8,7 +10,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { ChartTooltipContent } from "@/components/ui/chart";
 
 interface StatisticsData {
   day: string;
@@ -33,30 +34,43 @@ export function StatisticsChart({ data }: StatisticsChartProps) {
           bottom: 5,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="day" axisLine={false} tickLine={false} />
-        <YAxis axisLine={false} tickLine={false} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          vertical={false}
+          stroke="#374151"
+        />
+        <XAxis
+          dataKey="day"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: "#9ca3af", fontSize: 12 }}
+        />
+        <YAxis
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: "#9ca3af", fontSize: 12 }}
+        />
         <Tooltip
           content={({ active, payload, label }) => {
             if (active && payload && payload.length) {
               return (
-                <ChartTooltipContent>
-                  <div className="font-medium">{label}</div>
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-3 shadow-lg">
+                  <div className="font-medium text-white mb-2">{label}</div>
                   {payload.map((entry, index) => (
                     <div
                       key={`tooltip-${index}`}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 text-sm"
                     >
                       <div
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: entry.color }}
                       />
-                      <span>
+                      <span className="text-zinc-300">
                         {entry.name}: {entry.value}
                       </span>
                     </div>
                   ))}
-                </ChartTooltipContent>
+                </div>
               );
             }
             return null;
@@ -67,25 +81,26 @@ export function StatisticsChart({ data }: StatisticsChartProps) {
           height={36}
           iconType="circle"
           iconSize={8}
+          wrapperStyle={{ color: "#9ca3af" }}
         />
         <Bar
           dataKey="clients"
           stackId="a"
-          fill="#1e8a7a"
+          fill="#10b981"
           radius={[4, 4, 0, 0]}
           name="Clients"
         />
         <Bar
           dataKey="profits"
           stackId="a"
-          fill="#e5a07e"
+          fill="#f59e0b"
           radius={[4, 4, 0, 0]}
-          name="Expenses"
+          name="Profits"
         />
         <Bar
           dataKey="earnings"
           stackId="a"
-          fill="#f8e3c5"
+          fill="#84cc16"
           radius={[4, 4, 0, 0]}
           name="Earnings"
         />

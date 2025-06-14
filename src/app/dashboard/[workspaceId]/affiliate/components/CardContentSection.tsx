@@ -32,6 +32,7 @@ const CardContentSection = ({ userAffiliateLink }: Props) => {
       console.log(error);
     }
   };
+
   return (
     <>
       <div className="relative group">
@@ -39,12 +40,12 @@ const CardContentSection = ({ userAffiliateLink }: Props) => {
           <Input
             value={userAffiliateLink}
             readOnly
-            className="bg-zinc-700 border-zinc-700 text-zinc-300 pr-28"
+            className="bg-zinc-800 border-zinc-700 text-zinc-300 pr-28"
           />
           <Button
             variant="ghost"
             size="sm"
-            className="absolute right-0 h-full px-3 text-zinc-400 hover:text-white"
+            className="absolute right-0 h-full px-3 text-zinc-400 hover:text-white hover:bg-zinc-700"
             onClick={copyToClipboard}
           >
             <Copy className="h-4 w-4" />
