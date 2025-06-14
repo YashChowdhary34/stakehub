@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Toaster } from "@/components/ui/sonner";
 import GamingIDCard from "./GamingIDCard";
 
 type Platform = {
@@ -66,18 +67,18 @@ const GamingIDCarousel = ({ platforms }: Props) => {
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-background/80 backdrop-blur-sm"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-300 hover:bg-gray-200 active:bg-gray-200 backdrop-blur-sm"
                 onClick={prevSlide}
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4 text-black" />
               </Button>
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-background/80 backdrop-blur-sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-300 hover:bg-gray-200 active:bg-gray-200 backdrop-blur-sm"
                 onClick={nextSlide}
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4 text-black" />
               </Button>
             </>
           )}
@@ -127,6 +128,9 @@ const GamingIDCarousel = ({ platforms }: Props) => {
             )}
           </div>
         )}
+
+        {/* Global Toaster for Desktop */}
+        <Toaster />
       </div>
     );
   }
@@ -147,18 +151,18 @@ const GamingIDCarousel = ({ platforms }: Props) => {
             <Button
               variant="outline"
               size="icon"
-              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm"
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-gray-300 hover:bg-gray-200 active:bg-gray-200 backdrop-blur-sm"
               onClick={prevSlide}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 text-black" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-gray-300 hover:bg-gray-200 active:bg-gray-200 backdrop-blur-sm"
               onClick={nextSlide}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 text-black" />
             </Button>
           </>
         )}
@@ -213,6 +217,9 @@ const GamingIDCarousel = ({ platforms }: Props) => {
           </div>
         )}
       </div>
+
+      {/* Global Toaster for Mobile */}
+      <Toaster />
     </div>
   );
 };

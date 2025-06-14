@@ -12,7 +12,10 @@ const Page = async () => {
   }
 
   return (
-    <main className="fixed top-16 md:top-0 left-0 w-full h-screen md:ml-64 md:w-[calc(100%-16rem)] bg-background overflow-y-auto">
+    <div className="h-full w-full overflow-x-hidden">
+      {/* Mobile header spacer - only visible on mobile */}
+      <div className="h-16 md:hidden" />
+
       <div className="p-4 md:p-6 lg:p-8 space-y-8">
         {/* Gaming ID Cards Section */}
         <div className="w-full">
@@ -112,7 +115,7 @@ const Page = async () => {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 };
 

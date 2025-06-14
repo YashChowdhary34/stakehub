@@ -11,11 +11,10 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import toast from "react-hot-toast";
 import React, { useState } from "react";
 import Image from "next/image";
 import { BadgeHelp, Copy, Eye, EyeOff } from "lucide-react";
-import { Toaster } from "react-hot-toast";
+import { toast } from "sonner";
 
 type Props = {
   platformImage?: string;
@@ -35,7 +34,13 @@ const GamingIDCard = ({
   const copyToClipboard = async (text: string, type: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success(`${type} copied to clipboard!`);
+      toast(`${type} have been copied successfully`, {
+        description: `Now paste this ${type} on the respective platform`,
+        action: {
+          label: "Undo",
+          onClick: () => console.log("Undo"),
+        },
+      });
     } catch (err) {
       toast.error(`Failed to copy ${type.toLowerCase()}`);
       console.log(err);
@@ -44,7 +49,6 @@ const GamingIDCard = ({
 
   return (
     <div className="w-full max-w-sm mx-auto">
-      <Toaster position="bottom-right" reverseOrder={false} />
       <Card className="w-full h-full bg-card border-border shadow-lg hover:shadow-xl transition-shadow duration-300">
         <CardHeader className="text-center pb-4">
           <CardTitle className="flex justify-center mb-3">

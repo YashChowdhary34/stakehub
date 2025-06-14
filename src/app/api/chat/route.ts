@@ -86,12 +86,11 @@ export async function GET() {
 }
 
 export async function POST() {
-  console.log("this is 1");
   const session = await getSession();
   if (!session || !session.user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  console.log("this is 2");
+
   const userId = session.user.id;
   const isAdmin = session.user.role === "ADMIN";
 
@@ -110,8 +109,6 @@ export async function POST() {
     );
   }
 
-  console.log("this is 4");
-
   try {
     const existing = await client.chat.findUnique({
       where: { userId_adminId: { userId, adminId } },
@@ -123,8 +120,6 @@ export async function POST() {
         { status: 400 }
       );
     }
-
-    console.log("this is 5");
 
     const newChat = await client.chat.create({
       data: {

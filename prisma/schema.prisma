@@ -188,7 +188,7 @@ model Message {
   content   String? 
   fileName  String?   
   fileUrl   String?
-  mimeType  String?
+  fileType  String? //MIME type
 
   createdAt   DateTime  @default(now())
 

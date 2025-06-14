@@ -49,6 +49,8 @@ type Message = {
   type: "TEXT" | "FILE";
   content: string | null;
   fileUrl: string | null;
+  fileName?: string;
+  fileType?: string;
   createdAt: string;
 };
 
@@ -458,10 +460,10 @@ const AdminChat = ({ adminId }: Props) => {
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-foreground truncate pr-2">
-                              {chat.user.name || "Anonymous User"}
+                              {chat.user.email || "Anonymous User"}
                             </h4>
                             <p className="text-xs text-muted-foreground truncate">
-                              {chat.user.email}
+                              {chat.user.id}
                             </p>
                           </div>
                           {timeAgo && (

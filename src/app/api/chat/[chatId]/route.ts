@@ -1,6 +1,6 @@
 import { getSession } from "@/actions/user";
 import client from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 async function validateRequest(chatId: string) {
   const session = await getSession();
@@ -34,7 +34,7 @@ async function validateRequest(chatId: string) {
 }
 
 export async function GET(
-  request: Request,
+  req: NextRequest,
   { params }: { params: { chatId: string } }
 ) {
   const validation = await validateRequest(params.chatId);
@@ -55,6 +55,8 @@ export async function GET(
         type: true,
         content: true,
         fileUrl: true,
+        fileName: true,
+        fileType: true,
         createdAt: true,
         readAt: true,
       },
@@ -71,7 +73,7 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { chatId: string } }
 ) {
   const validation = await validateRequest(params.chatId);
@@ -84,20 +86,20 @@ export async function POST(
 
   try {
     const body = await request.json();
-    const { type, content, fileUrl } = body as {
+    const { type, content, fileUrl, fileName, fileType } = body as {
       type: "TEXT" | "FILE";
       content?: string;
       fileUrl?: string;
+      fileName?: string;
+      fileType?: string;
     };
-
     if (
       !type ||
       (type === "TEXT" && !content) ||
-      (type === "FILE" && !fileUrl)
+      (type === "FILE" && (!fileUrl || !fileName || !fileType))
     ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
-
     const newMessage = await client.message.create({
       data: {
         chat: { connect: { id: validation.chat.id } },
@@ -105,6 +107,8 @@ export async function POST(
         type,
         content: type === "TEXT" ? content! : null,
         fileUrl: type === "FILE" ? fileUrl : null,
+        fileName: type === "FILE" ? fileName : null,
+        fileType: type === "FILE" ? fileType : null,
       },
       select: {
         id: true,
@@ -112,6 +116,8 @@ export async function POST(
         type: true,
         content: true,
         fileUrl: true,
+        fileName: true,
+        fileType: true,
         createdAt: true,
         readAt: true,
       },
