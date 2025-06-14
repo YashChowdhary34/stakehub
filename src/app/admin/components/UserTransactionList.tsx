@@ -44,16 +44,13 @@ type ApiResponse = {
   users: UserListItem[];
 };
 
-type Props = {
-  clientProfit: number;
-};
-
-export default function UserTransactionList({ clientProfit }: Props) {
+export default function UserTransactionList() {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
   const [showTransactions, setShowTransactions] = useState(false);
+  const clientProfit = 0;
 
   // Fetch users from API
   useEffect(() => {

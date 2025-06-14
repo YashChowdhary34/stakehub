@@ -19,6 +19,7 @@ import {
   BanknoteArrowUp,
   CirclePlus,
   Clock,
+  Mic,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EstimatedReplyTimeSetting from "../../components/EstimatedReplyTimeSetting";
@@ -26,6 +27,14 @@ import CreateGamingIDModal from "../../components/CreateGamingIDModal";
 import DepositFormModal from "../../components/DepositFormModal";
 import WithdrawFormModal from "../../components/WithdrawlFormModal";
 import TemplateModal from "../../components/AdminTemplateModal";
+import Image from "next/image";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AlertDialogHeader } from "@/components/ui/alert-dialog";
 
 type ChatSummary = {
   id: string;
@@ -40,7 +49,9 @@ type ChatSummary = {
     content: string | null;
     fileUrl: string | null;
     createdAt: string;
-  }>; // this array is limited to [most recent message]
+    fileType?: string | null;
+    fileName?: string | null;
+  }>;
 };
 
 type Message = {
@@ -54,135 +65,145 @@ type Message = {
   createdAt: string;
 };
 
+type OptimisticMessage = Message & {
+  status: "sending" | "sent" | "failed";
+  isOptimistic: boolean;
+};
+
 type Props = {
   adminId: string;
 };
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+// File validation constants
+const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_MIME_TYPES = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/gif",
+  "audio/mpeg",
+  "audio/wav",
+  "audio/ogg",
+  "audio/webm",
+];
+
 const AdminChat = ({ adminId }: Props) => {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [textInput, setTextInput] = useState("");
   const [fileInput, setFileInput] = useState<File | null>(null);
-  const [sending, setSending] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isDepositFormOpen, setIsDepositFormOpen] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [isWithdrawlFormOpen, setIsWithdrawlFormOpen] = useState(false);
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null
+  );
+  const [audioChunks, setAudioChunks] = useState<BlobPart[]>([]);
+  const [preview, setPreview] = useState<{
+    url: string;
+    type: string;
+    fileName?: string;
+  } | null>(null);
+  const [optimisticMessages, setOptimisticMessages] = useState<
+    OptimisticMessage[]
+  >([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pendingMessages, setPendingMessages] = useState<
-    Map<
-      string,
-      {
-        content: string;
-        type: "TEXT" | "FILE";
-        fileUrl?: string;
-        timestamp: number;
-      }
-    >
-  >(new Map());
-  const [failedMessages, setFailedMessages] = useState<Set<string>>(new Set());
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [gamingIdModalOpen, setGamingIdModalOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
-  // 1. Fetch list of chats (Admin view)
+  // Fetch chats
   const {
     data: chatListData,
     error: chatListError,
     mutate: mutateChats,
-  } = useSWR(
-    "/api/chat", // since GET /api/chat returns all chats for Admin
-    fetcher,
-    { refreshInterval: 5000 } // poll every 5s so new user chats appear
-  );
-
+  } = useSWR("/api/chat", fetcher, { refreshInterval: 5000 });
   const chatList: ChatSummary[] = chatListData?.chats || [];
-
   const filteredChatList = chatList.filter((chat) => {
     const searchLower = searchQuery.toLowerCase();
     const userName = chat.user.name?.toLowerCase() || "";
     const userEmail = chat.user.email.toLowerCase();
-
     return userName.includes(searchLower) || userEmail.includes(searchLower);
   });
 
-  // 2. When Admin clicks a chat, set selectedChatId
-  // 3. Fetch messages for that chat:
-  const {
-    data: messagesData,
-    // error: messagesError,
-    mutate: mutateMessages,
-  } = useSWR(selectedChatId ? `/api/chat/${selectedChatId}` : null, fetcher, {
-    refreshInterval: 2000,
-  });
+  // Fetch messages
+  const { data: messagesData, mutate: mutateMessages } = useSWR(
+    selectedChatId ? `/api/chat/${selectedChatId}` : null,
+    fetcher,
+    { refreshInterval: 2000 }
+  );
 
-  const messages: Message[] = messagesData?.messages || [];
+  const serverMessages: Message[] = messagesData?.messages || [];
 
-  // Auto-scroll whenever messages change
+  // Auto-scroll whenever messages or optimisticMessages change
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [serverMessages, optimisticMessages]);
 
-  // Close sidebar when chat is selected on mobile
   const handleChatSelect = (chatId: string) => {
     setSelectedChatId(chatId);
     setSidebarOpen(false);
+    setOptimisticMessages([]);
   };
-
-  // Handle back button on mobile
   const handleBackToChats = () => {
     setSelectedChatId(null);
     setSidebarOpen(true);
   };
 
+  // Template send
   const handleTemplateSend = async (template: string) => {
-    if (!selectedChatId || sending) return;
+    if (!selectedChatId) return;
+    sendText(template);
+  };
 
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage = {
-      content: template,
-      type: "TEXT" as const,
-      timestamp: Date.now(),
+  // Send text (or template) with optimistic
+  const sendText = async (overrideText?: string) => {
+    if ((!textInput.trim() && !overrideText) || !selectedChatId) return;
+    const content = overrideText ? overrideText : textInput.trim();
+    if (!overrideText) setTextInput("");
+    const createdAt = new Date().toISOString();
+    const tempMessage: OptimisticMessage = {
+      id: `temp-${Date.now()}`,
+      senderId: adminId,
+      type: "TEXT",
+      content,
+      fileUrl: null,
+      fileName: undefined,
+      fileType: undefined,
+      createdAt,
+      status: "sending",
+      isOptimistic: true,
     };
-
-    // Add to pending messages
-    setPendingMessages((prev) => new Map(prev).set(tempId, tempMessage));
-
-    setSending(true);
+    setOptimisticMessages((prev) => [...prev, tempMessage]);
     try {
       await fetch(`/api/chat/${selectedChatId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "TEXT", content: template }),
+        body: JSON.stringify({ type: "TEXT", content }),
       });
-
-      // Remove from pending on success
-      setPendingMessages((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
-      });
-
+      setOptimisticMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessage.id ? { ...msg, status: "sent" } : msg
+        )
+      );
       mutateMessages();
       mutateChats();
     } catch (error) {
-      console.error("Error sending template message:", error);
-
-      // Mark as failed
-      setFailedMessages((prev) => new Set(prev).add(tempId));
-
-      // Show error alert
+      console.error("Error sending message:", error);
+      setOptimisticMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessage.id ? { ...msg, status: "failed" } : msg
+        )
+      );
       alert("Failed to send message. Please try again.");
-
-      throw error;
-    } finally {
-      setSending(false);
     }
   };
 
-  // Handle Enter key
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -190,130 +211,139 @@ const AdminChat = ({ adminId }: Props) => {
     }
   };
 
-  // Send text message
-  const sendText = async () => {
-    if (!textInput.trim() || sending || !selectedChatId) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const content = textInput.trim();
-    const tempMessage = {
-      content,
-      type: "TEXT" as const,
-      timestamp: Date.now(),
+  // Audio recording
+  useEffect(() => {
+    if (!isRecording) return;
+    let stream: MediaStream;
+    let recorder: MediaRecorder;
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((s) => {
+        stream = s;
+        recorder = new MediaRecorder(stream);
+        setMediaRecorder(recorder);
+        recorder.ondataavailable = (e) => {
+          setAudioChunks((prev) => [...prev, e.data]);
+        };
+        recorder.onstop = () => {
+          const blob = new Blob(audioChunks, { type: "audio/webm" });
+          const file = new File([blob], `recording-${Date.now()}.webm`, {
+            type: "audio/webm",
+          });
+          if (
+            file.size <= MAX_SIZE_BYTES &&
+            ALLOWED_MIME_TYPES.includes(file.type)
+          ) {
+            setFileInput(file);
+          } else {
+            alert("Recorded audio is not allowed or exceeds size limit.");
+          }
+          setAudioChunks([]);
+          stream.getTracks().forEach((t) => t.stop());
+        };
+        recorder.start();
+      })
+      .catch((err) => {
+        console.error("Microphone access denied", err);
+        alert("Cannot access microphone");
+        setIsRecording(false);
+      });
+    return () => {
+      if (recorder && recorder.state !== "inactive") recorder.stop();
+      if (stream) stream.getTracks().forEach((t) => t.stop());
     };
-
-    // Add to pending messages
-    setPendingMessages((prev) => new Map(prev).set(tempId, tempMessage));
-    setTextInput(""); // Clear input immediately
-
-    setSending(true);
-    try {
-      await fetch(`/api/chat/${selectedChatId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "TEXT", content }),
-      });
-
-      // Remove from pending on success
-      setPendingMessages((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
-      });
-
-      mutateMessages();
-      mutateChats();
-    } catch (error) {
-      console.error("Error sending message:", error);
-
-      // Mark as failed
-      setFailedMessages((prev) => new Set(prev).add(tempId));
-
-      // Show error alert
-      alert("Failed to send message. Please try again.");
-    } finally {
-      setSending(false);
+  }, [isRecording]);
+  const toggleRecording = () => {
+    if (isRecording) {
+      mediaRecorder?.stop();
+      setIsRecording(false);
+    } else {
+      setAudioChunks([]);
+      setIsRecording(true);
     }
   };
 
-  // Send file
+  // File select
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_SIZE_BYTES) {
+      alert("File too large. Maximum size is 5 MB.");
+      e.target.value = "";
+      return;
+    }
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      alert("File type not allowed.");
+      e.target.value = "";
+      return;
+    }
+    setFileInput(file);
+  };
+
+  // Send file with optimistic
   const sendFile = async () => {
     if (!fileInput || !selectedChatId) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const fileName = fileInput.name;
-    const tempMessage = {
-      content: fileName,
-      type: "FILE" as const,
-      fileUrl: "",
-      timestamp: Date.now(),
-    };
-
-    // Add to pending messages
-    setPendingMessages((prev) => new Map(prev).set(tempId, tempMessage));
+    const file = fileInput;
     setFileInput(null);
     (document.getElementById("admin-file-input") as HTMLInputElement).value =
       "";
-
-    setSending(true);
+    const objectUrl = URL.createObjectURL(file);
+    const createdAt = new Date().toISOString();
+    const tempMessage: OptimisticMessage = {
+      id: `temp-${Date.now()}`,
+      senderId: adminId,
+      type: "FILE",
+      content: file.name,
+      fileUrl: objectUrl,
+      fileName: file.name,
+      fileType: file.type,
+      createdAt,
+      status: "sending",
+      isOptimistic: true,
+    };
+    setOptimisticMessages((prev) => [...prev, tempMessage]);
     try {
-      const fileType = fileInput.type;
-
       const presignRes = await fetch("/api/upload-presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName, fileType }),
+        body: JSON.stringify({ fileName: file.name, fileType: file.type }),
       });
-
-      if (!presignRes.ok) {
-        throw new Error("Presign failed");
-      }
-
+      if (!presignRes.ok) throw new Error("Presign failed");
       const { uploadUrl, publicUrl } = (await presignRes.json()) as {
         uploadUrl: string;
         publicUrl: string;
       };
-
       const uploadResponse = await fetch(uploadUrl, {
         method: "PUT",
-        headers: {
-          "Content-Type": fileType,
-        },
-        body: fileInput,
+        headers: { "Content-Type": file.type },
+        body: file,
       });
-
-      if (!uploadResponse.ok) {
-        throw new Error("Upload failed");
-      }
-
+      if (!uploadResponse.ok) throw new Error("Upload failed");
       await fetch(`/api/chat/${selectedChatId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "FILE",
           fileUrl: publicUrl,
+          fileName: file.name,
+          fileType: file.type,
         }),
       });
-
-      // Remove from pending on success
-      setPendingMessages((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
-      });
-
+      setOptimisticMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessage.id ? { ...msg, status: "sent" } : msg
+        )
+      );
       mutateMessages();
       mutateChats();
     } catch (error) {
       console.error("Error sending file:", error);
-
-      // Mark as failed
-      setFailedMessages((prev) => new Set(prev).add(tempId));
-
-      // Show error alert
+      setOptimisticMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempMessage.id ? { ...msg, status: "failed" } : msg
+        )
+      );
       alert("Failed to send file. Please try again.");
-    } finally {
-      setSending(false);
     }
   };
 
@@ -342,8 +372,67 @@ const AdminChat = ({ adminId }: Props) => {
     );
   }
 
+  const openPreviewModal = (msg: {
+    url: string;
+    type: string;
+    fileName?: string;
+  }) => {
+    setPreview(msg);
+  };
+  const closePreviewModal = () => setPreview(null);
+
   return (
     <div className="fixed inset-0 top-16 bg-background flex overflow-hidden">
+      {/* Preview Dialog */}
+      {preview && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closePreviewModal();
+          }}
+        >
+          <DialogContent className="max-w-3xl w-full h-auto">
+            <AlertDialogHeader>
+              <DialogTitle>{preview.fileName}</DialogTitle>
+              <DialogClose className="absolute top-2 right-2" />
+            </AlertDialogHeader>
+            <div className="mt-4">
+              {preview.type.startsWith("image/") && (
+                <Image
+                  src={preview.url}
+                  alt={preview.fileName || "image-preview"}
+                  className="w-full h-auto object-contain"
+                  width={600}
+                  height={400}
+                />
+              )}
+              {preview.type === "application/pdf" && (
+                <embed
+                  src={preview.url}
+                  type="application/pdf"
+                  width="100%"
+                  height="600px"
+                />
+              )}
+              {preview.type.startsWith("audio/") && (
+                <audio controls src={preview.url} className="w-full" />
+              )}
+              {!preview.type.startsWith("image/") &&
+                preview.type !== "application/pdf" &&
+                !preview.type.startsWith("audio/") && (
+                  <a
+                    href={preview.url}
+                    download
+                    className="text-blue-600 hover:underline"
+                  >
+                    Download {preview.fileName || "file"}
+                  </a>
+                )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -352,32 +441,29 @@ const AdminChat = ({ adminId }: Props) => {
         />
       )}
 
-      {/* Deposit Form Modal */}
+      {/* Deposit & Modals */}
       <DepositFormModal
-        isOpen={isDepositFormOpen}
-        onClose={() => setIsDepositFormOpen(false)}
+        isOpen={depositModalOpen}
+        onClose={() => setDepositModalOpen(false)}
         chatId={selectedChatId ?? undefined}
       />
       <WithdrawFormModal
-        isOpen={isWithdrawlFormOpen}
-        onClose={() => setIsWithdrawlFormOpen(false)}
+        isOpen={withdrawModalOpen}
+        onClose={() => setWithdrawModalOpen(false)}
         chatId={selectedChatId ?? undefined}
       />
-
-      {/* Create ID modal */}
       <CreateGamingIDModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={gamingIdModalOpen}
+        onClose={() => setGamingIdModalOpen(false)}
         chatId={selectedChatId ?? undefined}
       />
-
       <TemplateModal
-        isOpen={isTemplateModalOpen}
-        onClose={() => setIsTemplateModalOpen(false)}
+        isOpen={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
         onSendTemplate={handleTemplateSend}
       />
 
-      {/* ─── Sidebar: List of Chats ──────────────────────────── */}
+      {/* Sidebar */}
       <div
         className={cn(
           "fixed lg:relative inset-y-0 left-0 z-40 w-full max-w-sm bg-card border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0",
@@ -385,9 +471,7 @@ const AdminChat = ({ adminId }: Props) => {
           "lg:w-80"
         )}
       >
-        {/* Sidebar Header */}
         <div className="p-4 border-b border-border bg-card/95 backdrop-blur-sm mt-14">
-          {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
@@ -413,8 +497,6 @@ const AdminChat = ({ adminId }: Props) => {
             <EstimatedReplyTimeSetting />
           </div>
         </div>
-
-        {/* Chat List */}
         <div className="flex-1 overflow-y-auto">
           {filteredChatList.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
@@ -438,7 +520,6 @@ const AdminChat = ({ adminId }: Props) => {
                 const lastMsg = chat.messages[0];
                 const isSelected = selectedChatId === chat.id;
                 const timeAgo = lastMsg ? new Date(lastMsg.createdAt) : null;
-
                 return (
                   <div
                     key={chat.id}
@@ -455,7 +536,6 @@ const AdminChat = ({ adminId }: Props) => {
                         </div>
                         <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-card rounded-full"></div>
                       </div>
-
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex-1 min-w-0">
@@ -475,7 +555,6 @@ const AdminChat = ({ adminId }: Props) => {
                             </span>
                           )}
                         </div>
-
                         <div className="flex items-center justify-between">
                           <p className="text-sm text-muted-foreground truncate pr-2">
                             {lastMsg ? (
@@ -494,7 +573,6 @@ const AdminChat = ({ adminId }: Props) => {
                               <span className="italic">No messages yet</span>
                             )}
                           </p>
-
                           {lastMsg && (
                             <div className="flex items-center space-x-1 flex-shrink-0">
                               <CheckCheck className="h-3 w-3 text-primary" />
@@ -525,14 +603,12 @@ const AdminChat = ({ adminId }: Props) => {
                   >
                     <ArrowLeft className="h-5 w-5 text-muted-foreground" />
                   </button>
-
                   <button
                     onClick={() => setSidebarOpen(true)}
                     className="hidden lg:block xl:hidden p-2 hover:bg-muted rounded-lg transition-colors"
                   >
                     <Menu className="h-5 w-5 text-muted-foreground" />
                   </button>
-
                   <div className="flex items-center space-x-3">
                     <div className="relative">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
@@ -540,7 +616,6 @@ const AdminChat = ({ adminId }: Props) => {
                       </div>
                       <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 border-2 border-card rounded-full"></div>
                     </div>
-
                     <div>
                       <h3 className="font-semibold text-foreground">
                         {chatList.find((c) => c.id === selectedChatId)?.user
@@ -556,7 +631,6 @@ const AdminChat = ({ adminId }: Props) => {
                     </div>
                   </div>
                 </div>
-
                 <button className="p-2 hover:bg-muted rounded-lg transition-colors">
                   <MoreVertical className="h-5 w-5 text-muted-foreground" />
                 </button>
@@ -565,8 +639,9 @@ const AdminChat = ({ adminId }: Props) => {
 
             {/* Messages Area */}
             <div className="flex-1 overflow-hidden bg-gradient-to-b from-background to-muted/20">
-              <div className="h-full overflow-y-auto">
-                {messages.length === 0 ? (
+              <div className="h-full overflow-y-auto px-4 py-6 space-y-4">
+                {serverMessages.length === 0 &&
+                optimisticMessages.length === 0 ? (
                   <div className="flex h-full items-center justify-center p-8">
                     <div className="text-center max-w-sm">
                       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -581,162 +656,277 @@ const AdminChat = ({ adminId }: Props) => {
                     </div>
                   </div>
                 ) : (
-                  <div className="px-4 py-6 space-y-4">
-                    {/* Regular messages */}
-                    {messages.map((msg, index) => {
-                      const isAdminSender = msg.senderId === adminId;
-                      const showTime =
-                        index === 0 ||
-                        new Date(msg.createdAt).getTime() -
-                          new Date(messages[index - 1].createdAt).getTime() >
-                          300000; // 5 minutes
-
-                      return (
-                        <div key={msg.id}>
-                          {showTime && (
-                            <div className="flex justify-center mb-4">
-                              <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
-                                {new Date(msg.createdAt).toLocaleDateString()}{" "}
-                                {new Date(msg.createdAt).toLocaleTimeString(
-                                  [],
-                                  { hour: "2-digit", minute: "2-digit" }
-                                )}
-                              </span>
-                            </div>
-                          )}
-
-                          <div
-                            className={cn(
-                              "flex items-end space-x-2",
-                              isAdminSender ? "justify-end" : "justify-start"
-                            )}
-                          >
-                            {!isAdminSender && (
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 flex-shrink-0">
-                                <User className="h-4 w-4 text-primary" />
-                              </div>
-                            )}
-
-                            <div
-                              className={cn(
-                                "max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 shadow-sm",
-                                isAdminSender
-                                  ? "bg-primary text-primary-foreground rounded-br-md"
-                                  : "bg-card border border-border rounded-bl-md"
-                              )}
-                            >
-                              {msg.type === "TEXT" ? (
-                                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                                  {msg.content}
-                                </p>
-                              ) : (
-                                <div className="flex items-center space-x-2">
-                                  <div
-                                    className={cn(
-                                      "p-2 rounded-lg",
-                                      isAdminSender
-                                        ? "bg-primary-foreground/10"
-                                        : "bg-muted"
-                                    )}
-                                  >
-                                    <FileText className="h-4 w-4" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <a
-                                      href={msg.fileUrl!}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center space-x-2 text-sm hover:underline"
-                                    >
-                                      <span className="truncate">
-                                        File attachment
-                                      </span>
-                                      <Download className="h-3 w-3 flex-shrink-0" />
-                                    </a>
-                                  </div>
-                                </div>
-                              )}
-
-                              <div
-                                className={cn(
-                                  "flex items-center justify-end mt-1 space-x-1",
-                                  isAdminSender
-                                    ? "text-primary-foreground/70"
-                                    : "text-muted-foreground"
-                                )}
-                              >
-                                <span className="text-xs">
+                  <>
+                    {/* Render server messages excluding those matching optimistic content */}
+                    {serverMessages
+                      .filter(
+                        (srv) =>
+                          !optimisticMessages.some(
+                            (opt) =>
+                              opt.type === srv.type &&
+                              opt.content === srv.content
+                          )
+                      )
+                      .map((msg, index) => {
+                        const isAdminSender = msg.senderId === adminId;
+                        const showTime =
+                          index === 0 ||
+                          new Date(msg.createdAt).getTime() -
+                            new Date(
+                              serverMessages[index - 1].createdAt
+                            ).getTime() >
+                            300000;
+                        return (
+                          <div key={msg.id}>
+                            {showTime && (
+                              <div className="flex justify-center mb-4">
+                                <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                                  {new Date(msg.createdAt).toLocaleDateString()}{" "}
                                   {new Date(msg.createdAt).toLocaleTimeString(
                                     [],
-                                    {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    }
+                                    { hour: "2-digit", minute: "2-digit" }
                                   )}
                                 </span>
-                                {isAdminSender && (
-                                  <CheckCheck className="h-3 w-3" />
+                              </div>
+                            )}
+                            <div
+                              className={cn(
+                                "flex items-end space-x-2",
+                                isAdminSender ? "justify-end" : "justify-start"
+                              )}
+                            >
+                              {!isAdminSender && (
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 flex-shrink-0">
+                                  <User className="h-4 w-4 text-primary" />
+                                </div>
+                              )}
+                              <div
+                                className={cn(
+                                  "max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 shadow-sm",
+                                  isAdminSender
+                                    ? "bg-primary text-primary-foreground rounded-br-md"
+                                    : "bg-card border border-border rounded-bl-md"
                                 )}
+                              >
+                                {msg.type === "TEXT" ? (
+                                  <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                                    {msg.content}
+                                  </p>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {msg.fileType?.startsWith("image/") ? (
+                                      <div
+                                        className="relative rounded-lg overflow-hidden cursor-pointer max-w-xs"
+                                        onClick={() =>
+                                          msg.fileUrl &&
+                                          msg.fileType &&
+                                          openPreviewModal({
+                                            url: msg.fileUrl,
+                                            type: msg.fileType,
+                                            fileName: msg.fileName,
+                                          })
+                                        }
+                                      >
+                                        <Image
+                                          src={msg.fileUrl || ""}
+                                          alt={msg.fileName || "Image"}
+                                          width={300}
+                                          height={200}
+                                          className="object-cover rounded-lg"
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors rounded-lg" />
+                                      </div>
+                                    ) : msg.fileType?.startsWith("audio/") ? (
+                                      <div className="flex items-center space-x-3 bg-muted/50 rounded-lg p-3 min-w-[250px]">
+                                        <div
+                                          className={cn(
+                                            "p-2 rounded-full",
+                                            isAdminSender
+                                              ? "bg-primary-foreground/20"
+                                              : "bg-primary/20"
+                                          )}
+                                        >
+                                          <Mic className="h-4 w-4" />
+                                        </div>
+                                        <div className="flex-1">
+                                          <audio
+                                            controls
+                                            src={msg.fileUrl || ""}
+                                            className="w-full h-8"
+                                            style={{
+                                              filter: isAdminSender
+                                                ? "invert(1)"
+                                                : "none",
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div
+                                        className="flex items-center space-x-3 cursor-pointer bg-muted/50 rounded-lg p-3 hover:bg-muted/70 transition-colors"
+                                        onClick={() =>
+                                          msg.fileUrl &&
+                                          msg.fileType &&
+                                          openPreviewModal({
+                                            url: msg.fileUrl,
+                                            type: msg.fileType,
+                                            fileName: msg.fileName,
+                                          })
+                                        }
+                                      >
+                                        <div
+                                          className={cn(
+                                            "p-2 rounded-lg",
+                                            isAdminSender
+                                              ? "bg-primary-foreground/20"
+                                              : "bg-primary/20"
+                                          )}
+                                        >
+                                          <FileText className="h-4 w-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium truncate">
+                                            {msg.fileName || "File attachment"}
+                                          </p>
+                                          <p className="text-xs opacity-70">
+                                            {msg.fileType
+                                              ?.split("/")[1]
+                                              ?.toUpperCase() || "FILE"}
+                                          </p>
+                                        </div>
+                                        <Download className="h-4 w-4 opacity-70" />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                <div
+                                  className={cn(
+                                    "flex items-center justify-end mt-1 space-x-1",
+                                    isAdminSender
+                                      ? "text-primary-foreground/70"
+                                      : "text-muted-foreground"
+                                  )}
+                                >
+                                  <span className="text-xs">
+                                    {new Date(msg.createdAt).toLocaleTimeString(
+                                      [],
+                                      { hour: "2-digit", minute: "2-digit" }
+                                    )}
+                                  </span>
+                                  {isAdminSender && (
+                                    <CheckCheck className="h-3 w-3" />
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
 
-                    {/* Pending messages */}
-                    {Array.from(pendingMessages.entries()).map(
-                      ([tempId, tempMsg]) => (
-                        <div key={tempId}>
-                          <div className="flex items-end space-x-2 justify-end">
-                            <div
-                              className={cn(
-                                "max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 shadow-sm rounded-br-md transition-colors",
-                                failedMessages.has(tempId)
-                                  ? "bg-red-500/80 text-white"
-                                  : "bg-primary text-primary-foreground"
-                              )}
-                            >
-                              {tempMsg.type === "TEXT" ? (
-                                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                                  {tempMsg.content}
-                                </p>
+                    {/* Optimistic messages */}
+                    {optimisticMessages.map((opt) => (
+                      <div
+                        key={opt.id}
+                        className="flex items-end space-x-2 justify-end"
+                      >
+                        <div
+                          className={cn(
+                            "max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 shadow-sm rounded-br-md transition-colors",
+                            opt.status === "failed"
+                              ? "bg-red-500/80 text-white"
+                              : "bg-primary text-primary-foreground"
+                          )}
+                        >
+                          {opt.type === "TEXT" ? (
+                            <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                              {opt.content}
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {opt.fileType?.startsWith("image/") ? (
+                                <div
+                                  className="relative rounded-lg overflow-hidden cursor-pointer max-w-xs"
+                                  onClick={() =>
+                                    openPreviewModal({
+                                      url: opt.fileUrl || "",
+                                      type: opt.fileType || "",
+                                      fileName: opt.fileName,
+                                    })
+                                  }
+                                >
+                                  <Image
+                                    src={opt.fileUrl || ""}
+                                    alt={opt.fileName || "Image"}
+                                    width={300}
+                                    height={200}
+                                    className="object-cover rounded-lg"
+                                  />
+                                  <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors rounded-lg" />
+                                </div>
+                              ) : opt.fileType?.startsWith("audio/") ? (
+                                <div className="flex items-center space-x-3 bg-primary-foreground/20 rounded-lg p-3 min-w-[250px]">
+                                  <div className="p-2 rounded-full bg-primary-foreground/30">
+                                    <Mic className="h-4 w-4" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <audio
+                                      controls
+                                      src={opt.fileUrl || ""}
+                                      className="w-full h-8"
+                                      style={{ filter: "invert(1)" }}
+                                    />
+                                  </div>
+                                </div>
                               ) : (
-                                <div className="flex items-center space-x-2">
-                                  <div className="p-2 rounded-lg bg-primary-foreground/10">
+                                <div
+                                  className="flex items-center space-x-3 cursor-pointer bg-primary-foreground/20 rounded-lg p-3 hover:bg-primary-foreground/30 transition-colors"
+                                  onClick={() =>
+                                    openPreviewModal({
+                                      url: opt.fileUrl || "",
+                                      type: opt.fileType || "",
+                                      fileName: opt.fileName,
+                                    })
+                                  }
+                                >
+                                  <div className="p-2 rounded-lg bg-primary-foreground/30">
                                     <FileText className="h-4 w-4" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <span className="text-sm truncate">
-                                      {tempMsg.content}
-                                    </span>
+                                    <p className="text-sm font-medium truncate">
+                                      {opt.fileName || opt.content}
+                                    </p>
+                                    <p className="text-xs opacity-70">
+                                      {opt.fileType
+                                        ?.split("/")[1]
+                                        ?.toUpperCase() || "FILE"}
+                                    </p>
                                   </div>
                                 </div>
                               )}
-
-                              <div className="flex items-center justify-end mt-1 space-x-1 text-primary-foreground/70">
-                                <span className="text-xs">
-                                  {new Date(
-                                    tempMsg.timestamp
-                                  ).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </span>
-                                {failedMessages.has(tempId) ? (
-                                  <X className="h-3 w-3 text-red-200" />
-                                ) : (
-                                  <Clock className="h-3 w-3" />
-                                )}
-                              </div>
                             </div>
+                          )}
+                          <div className="flex items-center justify-end mt-1 space-x-1 text-primary-foreground/70">
+                            <span className="text-xs">
+                              {new Date(opt.createdAt).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                            {opt.status === "sending" && (
+                              <Clock className="h-3 w-3" />
+                            )}
+                            {opt.status === "sent" && (
+                              <CheckCheck className="h-3 w-3" />
+                            )}
+                            {opt.status === "failed" && (
+                              <X className="h-3 w-3 text-red-200" />
+                            )}
                           </div>
                         </div>
-                      )
-                    )}
-
+                      </div>
+                    ))}
                     <div ref={messagesEndRef} />
-                  </div>
+                  </>
                 )}
               </div>
             </div>
@@ -745,32 +935,29 @@ const AdminChat = ({ adminId }: Props) => {
             <div className="border-t border-b border-border bg-card/50 p-3">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <button
-                  onClick={() => setIsTemplateModalOpen(true)}
-                  disabled={!selectedChatId} // Add this line
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-lg transition-colors text-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setTemplateModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-lg text-yellow-400 transition-colors"
                 >
                   <MessageSquare className="h-4 w-4" />
                   <span className="text-sm font-medium">Templates</span>
                 </button>
                 <button
-                  onClick={() => setIsDepositFormOpen(true)}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg transition-colors text-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setDepositModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg text-green-500 transition-colors"
                 >
                   <BanknoteArrowDown className="h-4 w-4" />
                   <span className="text-sm font-medium">Deposit</span>
                 </button>
                 <button
-                  onClick={() => setIsWithdrawlFormOpen(true)}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg transition-colors text-amber-600"
+                  onClick={() => setWithdrawModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-amber-600 transition-colors"
                 >
                   <BanknoteArrowUp className="h-4 w-4" />
                   <span className="text-sm font-medium">Withdraw</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setModalOpen(true);
-                  }}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-colors text-blue-500"
+                  onClick={() => setGamingIdModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg text-blue-500 transition-colors"
                 >
                   <CirclePlus className="h-4 w-4" />
                   <span className="text-sm font-medium">Create ID</span>
@@ -782,18 +969,34 @@ const AdminChat = ({ adminId }: Props) => {
             <div className="border-t border-border bg-card/95 backdrop-blur-sm p-4">
               {/* File Preview */}
               {fileInput && (
-                <div className="mb-3 p-3 bg-muted rounded-lg border border-border">
+                <div className="mb-3 p-3 bg-muted/50 rounded-lg border border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <FileText className="h-4 w-4 text-primary" />
-                      </div>
+                      {fileInput.type.startsWith("image/") ? (
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden">
+                          <Image
+                            src={URL.createObjectURL(fileInput)}
+                            alt="Preview"
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          {fileInput.type.startsWith("audio/") ? (
+                            <Mic className="h-4 w-4 text-primary" />
+                          ) : (
+                            <FileText className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
                           {fileInput.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {Math.round(fileInput.size / 1024)}KB
+                          {Math.round(fileInput.size / 1024)}KB •{" "}
+                          {fileInput.type.split("/")[1]?.toUpperCase()}
                         </p>
                       </div>
                     </div>
@@ -804,22 +1007,41 @@ const AdminChat = ({ adminId }: Props) => {
                       <X className="h-4 w-4" />
                     </button>
                   </div>
+                  {fileInput.type.startsWith("audio/") && (
+                    <div className="mt-3">
+                      <audio
+                        controls
+                        src={URL.createObjectURL(fileInput)}
+                        className="w-full h-8"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
-
               <div className="flex items-end space-x-2">
-                {/* File Input */}
                 <label className="cursor-pointer p-2 hover:bg-muted rounded-lg transition-colors border border-border">
                   <Paperclip className="h-5 w-5 text-muted-foreground" />
                   <input
                     id="admin-file-input"
                     type="file"
                     className="hidden"
-                    onChange={(e) => setFileInput(e.target.files?.[0] || null)}
+                    onChange={handleFileSelect}
+                    accept=".pdf,image/*,audio/*"
                   />
                 </label>
-
-                {/* Text Input */}
+                <button
+                  onClick={toggleRecording}
+                  aria-label={
+                    isRecording ? "Stop recording" : "Start recording"
+                  }
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
+                >
+                  {isRecording ? (
+                    <X className="h-5 w-5 text-red-500" />
+                  ) : (
+                    <Mic className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </button>
                 <div className="flex-1 relative">
                   <textarea
                     value={textInput}
@@ -830,26 +1052,25 @@ const AdminChat = ({ adminId }: Props) => {
                     rows={1}
                   />
                 </div>
-
-                {/* Send Button */}
                 <button
-                  onClick={fileInput ? sendFile : sendText}
-                  disabled={(!textInput.trim() && !fileInput) || sending}
+                  onClick={() => {
+                    if (fileInput) {
+                      sendFile();
+                    } else {
+                      sendText();
+                    }
+                  }}
+                  disabled={(!textInput.trim() && !fileInput) || false}
                   className={cn(
                     "p-2 rounded-lg transition-all duration-200 flex items-center justify-center",
-                    (!textInput.trim() && !fileInput) || sending
+                    !textInput.trim() && !fileInput
                       ? "cursor-not-allowed bg-muted text-muted-foreground"
                       : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md active:scale-95"
                   )}
                 >
-                  {sending ? (
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : (
-                    <Send className="h-5 w-5" />
-                  )}
+                  <Send className="h-5 w-5" />
                 </button>
               </div>
-
               <div className="mt-2 text-xs text-muted-foreground md:flex hidden">
                 Press Enter to send • Shift+Enter for new line
               </div>
