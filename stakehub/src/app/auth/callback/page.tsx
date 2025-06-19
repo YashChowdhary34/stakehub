@@ -7,7 +7,7 @@ export default async function AuthCallbackPage() {
   // Redirect after authentication
   if (auth.status === 200 || auth.status === 201) {
     if (auth.user?.workspace && auth.user.workspace.id) {
-      redirect(`/dashboard/${auth.user.workspace.id}/chat`);
+      redirect(`/dashboard/${auth.user.workspace.id}`);
     } else {
       redirect("/auth/sign-in");
     }
