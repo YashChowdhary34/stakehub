@@ -52,3 +52,15 @@ export const onAuthenticateUser = async () => {
     };
   }
 };
+
+export const getAffiliateCode = async () => {
+  const user = await currentUser();
+  if (!user) return null;
+
+  const isUser = await client.user.findUnique({
+    where: { clerkId: user.id },
+    select: { affiliateCode: true },
+  });
+
+  return isUser?.affiliateCode ?? null;
+};

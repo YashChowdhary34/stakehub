@@ -36,7 +36,7 @@ const mainNavItems: NavItem[] = [
   },
   {
     title: "Affiliate Link",
-    href: "affiliate",
+    href: "affiliate-link",
     icon: SquareArrowUpRight,
   },
   {
@@ -66,7 +66,7 @@ const teamNavItems: NavItem[] = [
   },
   {
     title: "Affiliate Dashboard",
-    href: "affiliate/dashboard",
+    href: "affiliate-dashboard",
     icon: () => (
       <span className="mr-2 h-2 w-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
     ),
