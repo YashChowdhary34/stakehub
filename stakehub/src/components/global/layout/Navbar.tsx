@@ -157,6 +157,7 @@ const Navbar = () => {
                     "bg-gradient-to-r from-zinc-700 to-zinc-800 hover:from-zinc-600 hover:to-zinc-700",
                     "border border-zinc-600 hover:border-zinc-500",
                     "text-xs font-medium px-3 py-1.5",
+                    "text-white font-medium px-6 py-2",
                     "shadow-md hover:shadow-lg transition-all duration-200"
                   )}
                 >
