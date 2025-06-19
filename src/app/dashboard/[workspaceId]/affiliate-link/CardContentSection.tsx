@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Check, Share2, ExternalLink, Sparkles } from "lucide-react";
+import { Copy, Check, Share2, Sparkles } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
 
@@ -151,8 +151,8 @@ const CardContentSection = ({ userAffiliateLink }: Props) => {
                 </h3>
                 <p className="text-zinc-300 leading-relaxed">
                   Share this link with your network. When someone signs up using
-                  your link, they'll be automatically added as your client and
-                  you'll start earning commissions.
+                  your link, they&apos;ll be automatically added as your client
+                  and you&apos;ll start earning commissions.
                 </p>
                 <div className="flex items-center gap-2 pt-2">
                   <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
