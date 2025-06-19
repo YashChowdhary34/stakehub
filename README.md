@@ -1,0 +1,1 @@
+# Stakehub - Client management platform
