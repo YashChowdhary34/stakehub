@@ -64,3 +64,39 @@ export const getAffiliateCode = async () => {
 
   return isUser?.affiliateCode ?? null;
 };
+
+export const getSession = async () => {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return { status: 404, message: "User not authenticated" };
+    }
+    const userSession = await client.user.findUnique({
+      where: {
+        clerkId: user.id,
+      },
+      select: {
+        id: true,
+        role: true,
+        profit: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+
+    if (!userSession) {
+      return { status: 403, message: "Couldn't get userSession" };
+    }
+    return {
+      status: 200,
+      message: "Successfully got userSession",
+      user: userSession,
+    };
+  } catch (error) {
+    return {
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+};

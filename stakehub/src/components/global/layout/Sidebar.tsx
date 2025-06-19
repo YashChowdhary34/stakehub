@@ -329,9 +329,6 @@ const Sidebar = ({ workspaceId }: Props) => {
                     >
                       <item.icon className="mr-3 h-4 w-4" />
                       {item.title}
-                      {isActive(item.href) && (
-                        <div className="absolute right-3 h-1.5 w-1.5 rounded-full bg-zinc-600" />
-                      )}
                     </button>
                   ))}
                 </div>

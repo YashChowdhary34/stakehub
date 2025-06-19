@@ -56,7 +56,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
         {/* Additional Help Text */}
         <div className="mt-6 text-center">
           <p className="text-xs text-muted-foreground">
-            Need help? Contact our support team for assistance.
+            Need help? Chat with us for assistance.
           </p>
         </div>
       </div>
