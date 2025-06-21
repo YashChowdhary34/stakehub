@@ -34,10 +34,11 @@ async function validateRequest(chatId: string) {
 }
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { chatId: string } }
+  request: NextRequest,
+  context: { params: Promise<{ chatId: string }> }
 ) {
-  const validation = await validateRequest(params.chatId);
+  const { chatId } = await context.params;
+  const validation = await validateRequest(chatId);
   if ("error" in validation) {
     return NextResponse.json(
       { error: validation.error },
@@ -74,9 +75,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { chatId: string } }
+  context: { params: Promise<{ chatId: string }> }
 ) {
-  const validation = await validateRequest(params.chatId);
+  const { chatId } = await context.params;
+  const validation = await validateRequest(chatId);
   if ("error" in validation) {
     return NextResponse.json(
       { error: validation.error },
