@@ -228,7 +228,7 @@ model AdminAction {
 model Setting {
   id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   estimatedReplyTime  Float           @default(10) // In minutes
-  onlineStatus        Boolean         @default(false)
+  onlineStatus        Boolean         @default(false) // Admin online status
   adminChatTemplates  String[]
   userChatTemplates   String[]
   updatedAt           DateTime        @default(now())
