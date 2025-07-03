@@ -10,6 +10,7 @@ export const onAuthenticateUser = async () => {
       return { status: 404, message: "User not authenticated" };
     }
 
+    // Check if user exists in the database
     const userExists = await prisma.user.findUnique({
       where: {
         clerkId: user.id,
@@ -26,6 +27,7 @@ export const onAuthenticateUser = async () => {
       };
     }
 
+    // If user does not exist, create a new user
     const newUser = await prisma.user.create({
       data: {
         clerkId: user.id,
@@ -41,6 +43,12 @@ export const onAuthenticateUser = async () => {
         workspace: true,
       },
     });
+    if (!newUser) {
+      return {
+        status: 403,
+        message: "Unable to create user on database",
+      };
+    }
 
     return { status: 201, message: "User created successfully", user: newUser };
   } catch (error) {
